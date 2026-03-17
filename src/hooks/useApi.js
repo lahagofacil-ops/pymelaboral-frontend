@@ -1,51 +1,49 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { get, post, put, del } from '../api/client'
+import { useState, useCallback, useRef } from 'react'
+import { apiClient } from '../api/client'
 
-const methods = { GET: get, POST: post, PUT: put, DELETE: del }
-
-export function useApi(initialUrl = null, initialMethod = 'GET') {
+export function useApi(method, url) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const lastCallRef = useRef({ method: initialMethod, url: initialUrl, body: null })
+  const urlRef = useRef(url)
+  urlRef.current = url
 
-  const execute = useCallback(async (method, url, body) => {
+  const execute = useCallback(async (bodyOrOverrideUrl = null, body = null) => {
     setLoading(true)
     setError(null)
-    lastCallRef.current = { method, url, body }
+    setData(null)
 
     try {
-      const fn = methods[method.toUpperCase()]
-      if (!fn) throw new Error(`Unsupported method: ${method}`)
+      let finalUrl = urlRef.current
+      let finalBody = bodyOrOverrideUrl
 
-      const result = method.toUpperCase() === 'GET' || method.toUpperCase() === 'DELETE'
-        ? await fn(url, body)
-        : await fn(url, body)
+      // If first arg is a string, treat it as URL override
+      if (typeof bodyOrOverrideUrl === 'string') {
+        finalUrl = bodyOrOverrideUrl
+        finalBody = body
+      }
 
-      setData(result)
-      return result
+      const res = await apiClient[method](finalUrl, finalBody)
+
+      if (res.success) {
+        setData(res.data)
+      } else {
+        setError(res.error || 'Error desconocido')
+      }
+
+      return res
     } catch (err) {
-      setError(err.message || 'Error en la solicitud')
-      throw err
+      const msg = err.message || 'Error inesperado'
+      setError(msg)
+      return { success: false, error: msg }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [method])
 
-  const refetch = useCallback(async () => {
-    const { method, url, body } = lastCallRef.current
-    if (url) {
-      return execute(method, url, body)
-    }
+  const refetch = useCallback(() => {
+    return execute()
   }, [execute])
-
-  useEffect(() => {
-    if (initialUrl) {
-      execute(initialMethod, initialUrl)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { data, loading, error, execute, refetch }
 }
-
-export default useApi

@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Users, LogIn } from 'lucide-react'
-import { get } from '../../api/client'
-import { useEmpresa } from '../../hooks/useEmpresa'
-import Button from '../../components/ui/Button'
-import Badge from '../../components/ui/Badge'
-import Alert from '../../components/ui/Alert'
+import { apiClient } from '../../api/client'
+import { useEmpresa } from '../../context/EmpresaContext'
+import { useAuth } from '../../context/AuthContext'
 import Spinner from '../../components/ui/Spinner'
-import { formatRut } from '../../lib/formatters'
+import Alert from '../../components/ui/Alert'
+import Button from '../../components/ui/Button'
 
 export default function SupervisorDashboard() {
   const navigate = useNavigate()
-  const { startImpersonation } = useEmpresa()
+  const { user } = useAuth()
+  const { enterEmpresa } = useEmpresa()
   const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -19,10 +19,14 @@ export default function SupervisorDashboard() {
   useEffect(() => {
     const fetchEmpresas = async () => {
       try {
-        const res = await get('/api/admin/empresas?limit=1000')
-        if (res.success) setEmpresas(res.data.empresas || [])
-      } catch (err) {
-        setError(err.message)
+        const res = await apiClient.get('/api/admin/empresas')
+        if (res.success) {
+          setEmpresas(res.data)
+        } else {
+          setError(res.error || 'Error al cargar empresas')
+        }
+      } catch {
+        setError('Error de conexion')
       } finally {
         setLoading(false)
       }
@@ -30,9 +34,9 @@ export default function SupervisorDashboard() {
     fetchEmpresas()
   }, [])
 
-  const handleEnter = (empresa) => {
-    startImpersonation(empresa.id, empresa)
-    navigate('/empresa/dashboard')
+  const handleEntrar = (empresa) => {
+    enterEmpresa(empresa.id, empresa.razonSocial)
+    navigate('/empresa')
   }
 
   if (loading) {
@@ -44,45 +48,45 @@ export default function SupervisorDashboard() {
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#111827]">Mis Empresas Asignadas</h1>
-        <p className="text-sm text-[#6B7280] mt-1">Selecciona una empresa para gestionar</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#111827]">Hola, {user?.nombre || 'Supervisora'}</h1>
+        <p className="text-[#6B7280] mt-1">Selecciona una empresa para gestionar</p>
       </div>
 
-      {error && <Alert type="error" message={error} className="mb-6" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
       {empresas.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-12 bg-white border border-[#E5E7EB] rounded-xl">
           <Building2 className="w-12 h-12 text-[#E5E7EB] mx-auto mb-4" />
-          <h3 className="text-base font-medium text-[#111827] mb-1">Sin empresas asignadas</h3>
-          <p className="text-sm text-[#6B7280]">No tienes empresas asignadas actualmente.</p>
+          <p className="text-[#6B7280]">No tienes empresas asignadas</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {empresas.map((empresa) => (
             <div
               key={empresa.id}
-              className="bg-white rounded-xl border border-[#E5E7EB] p-6 hover:shadow-md transition-shadow"
+              className="bg-white border border-[#E5E7EB] rounded-xl p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2 bg-blue-50 rounded-lg">
-                  <Building2 className="w-6 h-6 text-[#2563EB]" />
+                  <Building2 className="w-5 h-5 text-[#2563EB]" />
                 </div>
-                <Badge variant={empresa.activo ? 'success' : 'neutral'}>
-                  {empresa.activo ? 'Activo' : 'Inactivo'}
-                </Badge>
-              </div>
-              <h3 className="text-lg font-semibold text-[#111827] mb-1">{empresa.razonSocial}</h3>
-              <p className="text-sm text-[#6B7280] mb-1">{formatRut(empresa.rut)}</p>
-              <div className="flex items-center gap-4 text-sm text-[#6B7280] mb-4">
-                <Badge variant="info">{empresa.plan}</Badge>
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  {empresa.trabajadoresCount || 0} trabajadores
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-[#2563EB]">
+                  {(empresa.plan || '').charAt(0).toUpperCase() + (empresa.plan || '').slice(1)}
                 </span>
               </div>
-              <Button className="w-full" onClick={() => handleEnter(empresa)}>
+              <h3 className="text-base font-semibold text-[#111827] mb-1">{empresa.razonSocial}</h3>
+              <div className="flex items-center gap-1 text-sm text-[#6B7280] mb-4">
+                <Users className="w-4 h-4" />
+                <span>{empresa.trabajadoresCount ?? empresa._count?.trabajadores ?? 0} trabajadores</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => handleEntrar(empresa)}
+              >
                 <LogIn className="w-4 h-4" />
                 Entrar
               </Button>

@@ -1,61 +1,46 @@
-import { createContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
+import { useAuth } from './AuthContext'
 
-export const EmpresaContext = createContext(null)
+const EmpresaContext = createContext(null)
 
 export function EmpresaProvider({ children }) {
-  const [empresaId, setEmpresaId] = useState(null)
-  const [empresaData, setEmpresaData] = useState(null)
-  const [isImpersonating, setIsImpersonating] = useState(false)
+  const { user } = useAuth()
 
-  useEffect(() => {
-    const storedEmpresaId = sessionStorage.getItem('empresaId')
-    const storedEmpresaData = sessionStorage.getItem('empresaData')
-    const storedIsImpersonating = sessionStorage.getItem('isImpersonating')
+  const [impersonatedEmpresaId, setImpersonatedEmpresaId] = useState(() => {
+    return sessionStorage.getItem('impersonatedEmpresaId') || null
+  })
+  const [impersonatedEmpresaNombre, setImpersonatedEmpresaNombre] = useState(() => {
+    return sessionStorage.getItem('impersonatedEmpresaNombre') || null
+  })
 
-    if (storedEmpresaId) {
-      setEmpresaId(storedEmpresaId)
-    }
-    if (storedEmpresaData) {
-      try {
-        setEmpresaData(JSON.parse(storedEmpresaData))
-      } catch {
-        setEmpresaData(null)
-      }
-    }
-    if (storedIsImpersonating === 'true') {
-      setIsImpersonating(true)
-    }
+  const isImpersonating = !!impersonatedEmpresaId
+
+  const empresaId = isImpersonating ? impersonatedEmpresaId : (user?.empresaId || null)
+  const empresaNombre = isImpersonating ? impersonatedEmpresaNombre : (user?.empresaNombre || null)
+
+  const enterEmpresa = useCallback((id, nombre) => {
+    sessionStorage.setItem('impersonatedEmpresaId', id)
+    sessionStorage.setItem('impersonatedEmpresaNombre', nombre)
+    setImpersonatedEmpresaId(id)
+    setImpersonatedEmpresaNombre(nombre)
   }, [])
 
-  const startImpersonation = useCallback((id, data) => {
-    setEmpresaId(id)
-    setEmpresaData(data)
-    setIsImpersonating(true)
-    sessionStorage.setItem('empresaId', id)
-    sessionStorage.setItem('empresaData', JSON.stringify(data))
-    sessionStorage.setItem('isImpersonating', 'true')
+  const exitEmpresa = useCallback(() => {
+    sessionStorage.removeItem('impersonatedEmpresaId')
+    sessionStorage.removeItem('impersonatedEmpresaNombre')
+    setImpersonatedEmpresaId(null)
+    setImpersonatedEmpresaNombre(null)
   }, [])
-
-  const stopImpersonation = useCallback(() => {
-    setEmpresaId(null)
-    setEmpresaData(null)
-    setIsImpersonating(false)
-    sessionStorage.removeItem('empresaId')
-    sessionStorage.removeItem('empresaData')
-    sessionStorage.removeItem('isImpersonating')
-  }, [])
-
-  const value = {
-    empresaId,
-    empresaData,
-    isImpersonating,
-    startImpersonation,
-    stopImpersonation,
-  }
 
   return (
-    <EmpresaContext.Provider value={value}>
+    <EmpresaContext.Provider value={{ empresaId, empresaNombre, isImpersonating, enterEmpresa, exitEmpresa }}>
       {children}
     </EmpresaContext.Provider>
   )
+}
+
+export function useEmpresa() {
+  const ctx = useContext(EmpresaContext)
+  if (!ctx) throw new Error('useEmpresa must be used within EmpresaProvider')
+  return ctx
 }

@@ -1,130 +1,103 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Eye } from 'lucide-react'
-import { get, post } from '../../api/client'
+import { apiClient } from '../../api/client'
+import { formatCLP, formatDate } from '../../lib/utils'
+import { CAUSAL_TERMINO } from '../../lib/constants'
 import Table from '../../components/ui/Table'
-import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
+import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
-import { formatMoney, formatDate } from '../../lib/formatters'
-import { CAUSAL_TERMINO } from '../../lib/constants'
 
 export default function FiniquitosPage() {
   const [finiquitos, setFiniquitos] = useState([])
-  const [pagination, setPagination] = useState(null)
   const [trabajadores, setTrabajadores] = useState([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
   const [error, setError] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [showDetail, setShowDetail] = useState(false)
-  const [detailData, setDetailData] = useState(null)
-  const [createForm, setCreateForm] = useState({
-    trabajadorId: '', causal: '', fechaTermino: '', fechaAviso: '',
-  })
-  const [creating, setCreating] = useState(false)
-  const [modalError, setModalError] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [selectedFiniquito, setSelectedFiniquito] = useState(null)
+  const [form, setForm] = useState({ trabajadorId: '', causal: '', fechaTermino: '' })
+  const [saving, setSaving] = useState(false)
 
-  const fetchFiniquitos = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async () => {
     try {
-      const res = await get(`/api/finiquitos?page=${page}&limit=20`)
-      if (res.success) {
-        setFiniquitos(res.data.finiquitos || [])
-        setPagination(res.data.pagination || null)
-      }
-    } catch (err) {
-      setError(err.message)
+      const [fRes, tRes] = await Promise.all([
+        apiClient.get('/api/finiquitos'),
+        apiClient.get('/api/trabajadores'),
+      ])
+      if (fRes.success) setFiniquitos(fRes.data)
+      if (tRes.success) setTrabajadores(tRes.data)
+    } catch {
+      setError('Error de conexion')
     } finally {
       setLoading(false)
     }
-  }, [page])
-
-  useEffect(() => {
-    fetchFiniquitos()
-  }, [fetchFiniquitos])
-
-  useEffect(() => {
-    const fetchTrabajadores = async () => {
-      try {
-        const res = await get('/api/trabajadores?limit=1000')
-        if (res.success) setTrabajadores(res.data.trabajadores || [])
-      } catch {}
-    }
-    fetchTrabajadores()
   }, [])
 
-  const trabajadorOptions = trabajadores.map((t) => ({
-    value: t.id,
-    label: `${t.nombre} ${t.apellidoPaterno || ''}`.trim(),
-  }))
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-  const handleCreate = async () => {
-    setCreating(true)
-    setModalError('')
+  const handleSave = async () => {
+    setSaving(true)
+    setError('')
     try {
-      await post('/api/finiquitos', createForm)
-      setShowCreate(false)
-      setCreateForm({ trabajadorId: '', causal: '', fechaTermino: '', fechaAviso: '' })
-      fetchFiniquitos()
-    } catch (err) {
-      setModalError(err.message || 'Error al crear finiquito')
+      const res = await apiClient.post('/api/finiquitos', form)
+      if (res.success) {
+        setModalOpen(false)
+        setForm({ trabajadorId: '', causal: '', fechaTermino: '' })
+        await fetchData()
+      } else {
+        setError(res.error || 'Error al crear finiquito')
+      }
+    } catch {
+      setError('Error de conexion')
     } finally {
-      setCreating(false)
+      setSaving(false)
     }
   }
 
-  const openDetail = (fin) => {
-    setDetailData(fin)
-    setShowDetail(true)
+  const handleViewDetail = async (f) => {
+    try {
+      const res = await apiClient.get(`/api/finiquitos/${f.id}`)
+      if (res.success) {
+        setSelectedFiniquito(res.data)
+        setDetailOpen(true)
+      }
+    } catch {
+      setError('Error al cargar detalle')
+    }
   }
 
-  const estadoBadgeVariant = (estado) => {
-    const map = { BORRADOR: 'neutral', EMITIDO: 'info', FIRMADO: 'success', PAGADO: 'success' }
-    return map[estado] || 'neutral'
+  const estadoBadge = (estado) => {
+    const map = { PAGADO: 'success', PENDIENTE: 'warning', BORRADOR: 'neutral' }
+    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
   }
 
   const columns = [
     {
       key: 'trabajador',
       label: 'Trabajador',
-      render: (_, row) => {
-        const t = row.trabajador
-        return t ? `${t.nombre} ${t.apellidoPaterno || ''}`.trim() : '-'
-      },
+      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
     },
     {
       key: 'causal',
       label: 'Causal',
-      render: (val) => {
-        const found = CAUSAL_TERMINO.find((c) => c.value === val)
-        return found ? found.label : val
-      },
+      render: (val) => CAUSAL_TERMINO.find((c) => c.value === val)?.label || val,
     },
+    { key: 'fechaTermino', label: 'Fecha', render: (val) => formatDate(val) },
+    { key: 'total', label: 'Total', render: (val) => formatCLP(val) },
+    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
     {
-      key: 'fechaTermino',
-      label: 'Fecha Término',
-      render: (val) => formatDate(val),
-    },
-    {
-      key: 'total',
-      label: 'Total',
-      render: (val) => <span className="font-semibold">{formatMoney(val)}</span>,
-    },
-    {
-      key: 'estado',
-      label: 'Estado',
-      render: (val) => <Badge variant={estadoBadgeVariant(val)}>{val}</Badge>,
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
+      key: 'actions',
+      label: '',
       render: (_, row) => (
         <button
-          onClick={() => openDetail(row)}
-          className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#2563EB] transition-colors"
+          onClick={() => handleViewDetail(row)}
+          className="p-1.5 rounded-lg text-[#2563EB] hover:bg-blue-50 transition-colors"
           title="Ver detalle"
         >
           <Eye className="w-4 h-4" />
@@ -134,130 +107,77 @@ export default function FiniquitosPage() {
   ]
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Finiquitos</h1>
-        <Button onClick={() => { setModalError(''); setShowCreate(true) }}>
+        <Button onClick={() => { setForm({ trabajadorId: '', causal: '', fechaTermino: '' }); setModalOpen(true) }}>
           <Plus className="w-4 h-4" />
-          Nuevo Finiquito
+          Nuevo finiquito
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} className="mb-4" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      <Table
-        columns={columns}
-        data={finiquitos}
-        loading={loading}
-        emptyTitle="Sin finiquitos"
-        emptyDescription="No hay finiquitos registrados."
-        pagination={pagination}
-        onPageChange={setPage}
-      />
+      <Table columns={columns} data={finiquitos} loading={loading} emptyMessage="No hay finiquitos" />
 
-      {/* Create Modal */}
       <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Nuevo Finiquito"
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Nuevo finiquito"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} loading={creating}>Crear Finiquito</Button>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} loading={saving}>Crear</Button>
           </>
         }
       >
-        {modalError && <Alert type="error" message={modalError} className="mb-4" />}
         <div className="space-y-4">
           <Select
             label="Trabajador"
-            name="trabajadorId"
-            value={createForm.trabajadorId}
-            onChange={(e) => setCreateForm({ ...createForm, trabajadorId: e.target.value })}
-            options={trabajadorOptions}
-            required
+            value={form.trabajadorId}
+            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
+            options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
           />
           <Select
-            label="Causal de Término"
-            name="causal"
-            value={createForm.causal}
-            onChange={(e) => setCreateForm({ ...createForm, causal: e.target.value })}
+            label="Causal de termino"
+            value={form.causal}
+            onChange={(e) => setForm({ ...form, causal: e.target.value })}
             options={CAUSAL_TERMINO}
-            required
           />
-          <Input
-            label="Fecha de Término"
-            name="fechaTermino"
-            type="date"
-            value={createForm.fechaTermino}
-            onChange={(e) => setCreateForm({ ...createForm, fechaTermino: e.target.value })}
-            required
-          />
-          <Input
-            label="Fecha de Aviso"
-            name="fechaAviso"
-            type="date"
-            value={createForm.fechaAviso}
-            onChange={(e) => setCreateForm({ ...createForm, fechaAviso: e.target.value })}
-          />
-          <p className="text-xs text-[#6B7280]">
-            El sistema calculará automáticamente los montos de indemnización según la causal y la antigüedad del trabajador.
-          </p>
+          <Input label="Fecha de termino" type="date" value={form.fechaTermino} onChange={(e) => setForm({ ...form, fechaTermino: e.target.value })} />
         </div>
       </Modal>
 
-      {/* Detail Modal */}
       <Modal
-        isOpen={showDetail}
-        onClose={() => setShowDetail(false)}
-        title="Detalle de Finiquito"
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title="Detalle del finiquito"
         size="lg"
-        footer={
-          <Button variant="secondary" onClick={() => setShowDetail(false)}>Cerrar</Button>
-        }
       >
-        {detailData && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-[#6B7280]">Trabajador</p>
-                <p className="text-sm font-medium text-[#111827]">
-                  {detailData.trabajador ? `${detailData.trabajador.nombre} ${detailData.trabajador.apellidoPaterno || ''}` : '-'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Causal</p>
-                <p className="text-sm font-medium text-[#111827]">
-                  {CAUSAL_TERMINO.find((c) => c.value === detailData.causal)?.label || detailData.causal}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Fecha Término</p>
-                <p className="text-sm font-medium text-[#111827]">{formatDate(detailData.fechaTermino)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Estado</p>
-                <Badge variant={estadoBadgeVariant(detailData.estado)}>{detailData.estado}</Badge>
-              </div>
+        {selectedFiniquito && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div><span className="text-[#6B7280]">Trabajador:</span> <span className="font-medium text-[#111827]">{selectedFiniquito.trabajador ? `${selectedFiniquito.trabajador.nombre} ${selectedFiniquito.trabajador.apellidoPaterno}` : '-'}</span></div>
+              <div><span className="text-[#6B7280]">Causal:</span> <span className="font-medium text-[#111827]">{CAUSAL_TERMINO.find((c) => c.value === selectedFiniquito.causal)?.label || selectedFiniquito.causal}</span></div>
+              <div><span className="text-[#6B7280]">Fecha:</span> <span className="font-medium text-[#111827]">{formatDate(selectedFiniquito.fechaTermino)}</span></div>
+              <div><span className="text-[#6B7280]">Estado:</span> {estadoBadge(selectedFiniquito.estado)}</div>
             </div>
-
-            {detailData.montos && (
-              <div>
-                <h4 className="text-sm font-semibold text-[#111827] mb-2">Desglose de Montos</h4>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  {Object.entries(detailData.montos).map(([key, val]) => (
-                    <div key={key} className="flex justify-between text-sm">
+            {selectedFiniquito.desglose && typeof selectedFiniquito.desglose === 'object' && (
+              <div className="border-t border-[#E5E7EB] pt-4">
+                <h4 className="text-sm font-semibold text-[#111827] mb-2">Desglose</h4>
+                <div className="space-y-2 text-sm">
+                  {Object.entries(selectedFiniquito.desglose).map(([key, val]) => (
+                    <div key={key} className="flex justify-between">
                       <span className="text-[#6B7280]">{key}</span>
-                      <span className="text-[#111827] font-medium">{formatMoney(val)}</span>
+                      <span className="font-medium text-[#111827]">{formatCLP(val)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
-            <div className="bg-[#2563EB] text-white rounded-lg p-4 flex justify-between items-center">
-              <span className="text-lg font-semibold">Total Finiquito</span>
-              <span className="text-2xl font-bold">{formatMoney(detailData.total)}</span>
+            <div className="border-t border-[#E5E7EB] pt-4 flex justify-between text-base font-semibold text-[#111827]">
+              <span>Total:</span>
+              <span>{formatCLP(selectedFiniquito.total)}</span>
             </div>
           </div>
         )}

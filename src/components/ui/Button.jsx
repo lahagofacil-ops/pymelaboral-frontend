@@ -1,10 +1,12 @@
 import { Loader2 } from 'lucide-react'
+import { cn } from '../../lib/utils'
 
 const variants = {
-  primary: 'bg-[#2563EB] hover:bg-[#1E40AF] text-white focus:ring-[#2563EB]',
-  secondary: 'bg-white hover:bg-gray-50 text-[#111827] border border-[#E5E7EB] focus:ring-[#2563EB]',
-  danger: 'bg-[#DC2626] hover:bg-red-700 text-white focus:ring-[#DC2626]',
-  ghost: 'bg-transparent hover:bg-gray-100 text-[#6B7280] focus:ring-[#2563EB]',
+  primary: 'bg-[#2563EB] text-white hover:bg-[#1E40AF] focus:ring-[#2563EB]',
+  secondary: 'bg-[#1E40AF] text-white hover:bg-[#1e3a8a] focus:ring-[#1E40AF]',
+  outline: 'border border-[#E5E7EB] text-[#111827] bg-white hover:bg-gray-50 focus:ring-[#2563EB]',
+  danger: 'bg-[#DC2626] text-white hover:bg-red-700 focus:ring-[#DC2626]',
+  ghost: 'text-[#6B7280] bg-transparent hover:bg-gray-100 focus:ring-gray-300',
 }
 
 const sizes = {
@@ -17,29 +19,25 @@ export default function Button({
   children,
   variant = 'primary',
   size = 'md',
-  loading = false,
+  loading: isLoading = false,
   disabled = false,
-  type = 'button',
   className = '',
-  onClick,
+  type = 'button',
   ...props
 }) {
   return (
     <button
       type={type}
-      disabled={disabled || loading}
-      onClick={onClick}
-      className={`
-        inline-flex items-center justify-center gap-2 font-medium rounded-lg
-        transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2
-        disabled:opacity-50 disabled:cursor-not-allowed
-        ${variants[variant] || variants.primary}
-        ${sizes[size] || sizes.md}
-        ${className}
-      `}
+      disabled={disabled || isLoading}
+      className={cn(
+        'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
+        variants[variant] || variants.primary,
+        sizes[size] || sizes.md,
+        className
+      )}
       {...props}
     >
-      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
       {children}
     </button>
   )

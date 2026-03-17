@@ -1,4 +1,2 @@
-import { useContext } from 'react'
-import { EmpresaContext } from '../context/EmpresaContext'
-
-export const useEmpresa = () => useContext(EmpresaContext)
+// Re-export useEmpresa from context for backward compatibility
+export { useEmpresa } from '../context/EmpresaContext'

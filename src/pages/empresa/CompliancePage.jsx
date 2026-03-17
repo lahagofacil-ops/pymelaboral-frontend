@@ -1,22 +1,25 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, Link as LinkIcon } from 'lucide-react'
-import { get } from '../../api/client'
-import Badge from '../../components/ui/Badge'
-import Alert from '../../components/ui/Alert'
+import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { apiClient } from '../../api/client'
 import Spinner from '../../components/ui/Spinner'
+import Alert from '../../components/ui/Alert'
 
 export default function CompliancePage() {
-  const [data, setData] = useState(null)
+  const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchCompliance = async () => {
       try {
-        const res = await get('/api/compliance')
-        if (res.success) setData(res.data)
-      } catch (err) {
-        setError(err.message)
+        const res = await apiClient.get('/api/compliance')
+        if (res.success) {
+          setItems(Array.isArray(res.data) ? res.data : res.data?.items || [])
+        } else {
+          setError(res.error || 'Error al cargar compliance')
+        }
+      } catch {
+        setError('Error de conexion')
       } finally {
         setLoading(false)
       }
@@ -32,109 +35,61 @@ export default function CompliancePage() {
     )
   }
 
-  const porcentaje = data?.resumen?.porcentaje ?? 0
-  const checks = data?.checks || []
-
-  const getColorForPercentage = (pct) => {
-    if (pct >= 80) return { text: 'text-[#059669]', bg: 'bg-green-50', border: 'border-green-200', ring: 'stroke-[#059669]' }
-    if (pct >= 50) return { text: 'text-[#D97706]', bg: 'bg-yellow-50', border: 'border-yellow-200', ring: 'stroke-[#D97706]' }
-    return { text: 'text-[#DC2626]', bg: 'bg-red-50', border: 'border-red-200', ring: 'stroke-[#DC2626]' }
+  const getStatusConfig = (status) => {
+    switch (status) {
+      case 'ok':
+      case 'success':
+      case 'cumple':
+        return { icon: CheckCircle, color: 'text-[#059669]', bg: 'bg-green-50 border-green-200' }
+      case 'warning':
+      case 'parcial':
+        return { icon: AlertTriangle, color: 'text-[#D97706]', bg: 'bg-yellow-50 border-yellow-200' }
+      case 'critical':
+      case 'error':
+      case 'no_cumple':
+        return { icon: XCircle, color: 'text-[#DC2626]', bg: 'bg-red-50 border-red-200' }
+      default:
+        return { icon: AlertTriangle, color: 'text-[#6B7280]', bg: 'bg-gray-50 border-gray-200' }
+    }
   }
 
-  const colors = getColorForPercentage(porcentaje)
-  const circumference = 2 * Math.PI * 60
-  const strokeDashoffset = circumference - (porcentaje / 100) * circumference
-
   return (
-    <div>
-      <div className="mb-8">
+    <div className="space-y-6">
+      <div>
         <h1 className="text-2xl font-bold text-[#111827]">Compliance Laboral</h1>
-        <p className="text-sm text-[#6B7280]">Estado de cumplimiento de obligaciones laborales</p>
+        <p className="text-[#6B7280] mt-1">Estado de cumplimiento normativo de tu empresa</p>
       </div>
 
-      {error && <Alert type="error" message={error} className="mb-6" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* Percentage circle */}
-      <div className={`${colors.bg} border ${colors.border} rounded-xl p-8 mb-8 flex flex-col items-center`}>
-        <div className="relative w-40 h-40 mb-4">
-          <svg className="w-40 h-40 -rotate-90" viewBox="0 0 140 140">
-            <circle
-              cx="70"
-              cy="70"
-              r="60"
-              fill="none"
-              stroke="#E5E7EB"
-              strokeWidth="10"
-            />
-            <circle
-              cx="70"
-              cy="70"
-              r="60"
-              fill="none"
-              className={colors.ring}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className={`text-4xl font-bold ${colors.text}`}>{porcentaje}%</span>
-          </div>
+      {items.length === 0 ? (
+        <div className="text-center py-12 bg-white border border-[#E5E7EB] rounded-xl">
+          <CheckCircle className="w-12 h-12 text-[#E5E7EB] mx-auto mb-4" />
+          <p className="text-[#6B7280]">No hay items de compliance disponibles</p>
         </div>
-        <p className={`text-lg font-semibold ${colors.text}`}>
-          {porcentaje >= 80 ? 'Buen Cumplimiento' : porcentaje >= 50 ? 'Cumplimiento Parcial' : 'Cumplimiento Bajo'}
-        </p>
-        <p className="text-sm text-[#6B7280] mt-1">
-          {data?.resumen?.cumplidos || 0} de {data?.resumen?.total || 0} requisitos cumplidos
-        </p>
-      </div>
-
-      {/* Checklist */}
-      <div className="space-y-3">
-        {checks.map((check, index) => (
-          <div
-            key={check.id || index}
-            className={`bg-white rounded-lg border p-4 flex items-start gap-4 ${
-              check.cumple ? 'border-green-200' : 'border-red-200'
-            }`}
-          >
-            <div className="flex-shrink-0 mt-0.5">
-              {check.cumple ? (
-                <CheckCircle className="w-5 h-5 text-[#059669]" />
-              ) : (
-                <XCircle className="w-5 h-5 text-[#DC2626]" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="text-sm font-medium text-[#111827]">{check.nombre}</h4>
-                {check.obligatorio && (
-                  <Badge variant="danger">Obligatorio</Badge>
-                )}
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map((item, i) => {
+            const config = getStatusConfig(item.status || item.estado)
+            const Icon = config.icon
+            return (
+              <div
+                key={item.id || i}
+                className={`border rounded-xl p-5 ${config.bg}`}
+              >
+                <div className="flex items-start gap-3">
+                  <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${config.color}`} />
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#111827]">{item.titulo || item.name || item.label}</h3>
+                    <p className="text-sm text-[#6B7280] mt-1">{item.descripcion || item.description || item.message}</p>
+                    {item.recomendacion && (
+                      <p className="text-xs text-[#6B7280] mt-2 italic">{item.recomendacion}</p>
+                    )}
+                  </div>
+                </div>
               </div>
-              {check.descripcion && (
-                <p className="text-sm text-[#6B7280]">{check.descripcion}</p>
-              )}
-              {!check.cumple && check.accion && (
-                <a
-                  href={check.accion}
-                  className="inline-flex items-center gap-1 mt-2 text-sm text-[#2563EB] hover:text-[#1E40AF] font-medium"
-                >
-                  <LinkIcon className="w-3 h-3" />
-                  Resolver
-                </a>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {checks.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <AlertTriangle className="w-12 h-12 text-[#E5E7EB] mx-auto mb-4" />
-          <p className="text-sm text-[#6B7280]">No se encontraron items de compliance.</p>
+            )
+          })}
         </div>
       )}
     </div>

@@ -1,145 +1,121 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Pencil, Eye } from 'lucide-react'
-import { get, post, put } from '../../api/client'
+import { Plus, Search, Pencil, Trash2 } from 'lucide-react'
+import { apiClient } from '../../api/client'
+import { formatRut } from '../../lib/utils'
+import { AFP_LIST, SALUD_LIST } from '../../lib/constants'
 import Table from '../../components/ui/Table'
-import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
+import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
-import { formatRut, formatDate } from '../../lib/formatters'
-import { AFP_OPTIONS, SALUD_OPTIONS, REGIONES_CHILE } from '../../lib/constants'
-
-const estadoOptions = [
-  { value: '', label: 'Todos' },
-  { value: 'ACTIVO', label: 'Activo' },
-  { value: 'INACTIVO', label: 'Inactivo' },
-]
-
-const sexoOptions = [
-  { value: 'M', label: 'Masculino' },
-  { value: 'F', label: 'Femenino' },
-]
-
-const estadoCivilOptions = [
-  { value: 'SOLTERO', label: 'Soltero/a' },
-  { value: 'CASADO', label: 'Casado/a' },
-  { value: 'DIVORCIADO', label: 'Divorciado/a' },
-  { value: 'VIUDO', label: 'Viudo/a' },
-  { value: 'SEPARADO', label: 'Separado/a' },
-]
 
 const emptyForm = {
   rut: '', nombre: '', apellidoPaterno: '', apellidoMaterno: '',
-  fechaNacimiento: '', nacionalidad: 'Chilena', sexo: '', estadoCivil: '',
-  direccion: '', comuna: '', telefono: '', email: '',
-  afp: '', salud: '', tasaSalud: '', fechaIngreso: '',
+  fechaNacimiento: '', sexo: '', nacionalidad: 'Chilena',
+  afp: '', salud: '', fechaIngreso: '',
 }
 
 export default function TrabajadoresPage() {
   const [trabajadores, setTrabajadores] = useState([])
-  const [pagination, setPagination] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [filterEstado, setFilterEstado] = useState('')
-  const [page, setPage] = useState(1)
   const [error, setError] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [showDetail, setShowDetail] = useState(false)
-  const [detailData, setDetailData] = useState(null)
-  const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ ...emptyForm })
+  const [search, setSearch] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [modalError, setModalError] = useState('')
 
   const fetchTrabajadores = useCallback(async () => {
-    setLoading(true)
     try {
-      let url = `/api/trabajadores?page=${page}&limit=20`
-      if (search) url += `&search=${encodeURIComponent(search)}`
-      if (filterEstado) url += `&estado=${filterEstado}`
-      const res = await get(url)
+      const res = await apiClient.get('/api/trabajadores')
       if (res.success) {
-        setTrabajadores(res.data.trabajadores || [])
-        setPagination(res.data.pagination || null)
+        setTrabajadores(res.data)
+      } else {
+        setError(res.error || 'Error al cargar trabajadores')
       }
-    } catch (err) {
-      setError(err.message)
+    } catch {
+      setError('Error de conexion')
     } finally {
       setLoading(false)
     }
-  }, [search, filterEstado, page])
+  }, [])
 
   useEffect(() => {
     fetchTrabajadores()
   }, [fetchTrabajadores])
 
-  const openCreate = () => {
-    setEditing(null)
-    setForm({ ...emptyForm })
-    setModalError('')
-    setShowModal(true)
+  const handleOpenNew = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setModalOpen(true)
   }
 
-  const openEdit = (trab) => {
-    setEditing(trab)
+  const handleEdit = (t) => {
+    setEditingId(t.id)
     setForm({
-      rut: trab.rut || '',
-      nombre: trab.nombre || '',
-      apellidoPaterno: trab.apellidoPaterno || '',
-      apellidoMaterno: trab.apellidoMaterno || '',
-      fechaNacimiento: trab.fechaNacimiento?.slice(0, 10) || '',
-      nacionalidad: trab.nacionalidad || 'Chilena',
-      sexo: trab.sexo || '',
-      estadoCivil: trab.estadoCivil || '',
-      direccion: trab.direccion || '',
-      comuna: trab.comuna || '',
-      telefono: trab.telefono || '',
-      email: trab.email || '',
-      afp: trab.afp || '',
-      salud: trab.salud || '',
-      tasaSalud: trab.tasaSalud || '',
-      fechaIngreso: trab.fechaIngreso?.slice(0, 10) || '',
+      rut: t.rut || '',
+      nombre: t.nombre || '',
+      apellidoPaterno: t.apellidoPaterno || '',
+      apellidoMaterno: t.apellidoMaterno || '',
+      fechaNacimiento: t.fechaNacimiento ? t.fechaNacimiento.split('T')[0] : '',
+      sexo: t.sexo || '',
+      nacionalidad: t.nacionalidad || 'Chilena',
+      afp: t.afp || '',
+      salud: t.salud || '',
+      fechaIngreso: t.fechaIngreso ? t.fechaIngreso.split('T')[0] : '',
     })
-    setModalError('')
-    setShowModal(true)
-  }
-
-  const openDetail = (trab) => {
-    setDetailData(trab)
-    setShowDetail(true)
-  }
-
-  const handleFormChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    setModalOpen(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
-    setModalError('')
+    setError('')
     try {
-      const body = { ...form }
-      if (body.tasaSalud) body.tasaSalud = parseFloat(body.tasaSalud)
-      if (editing) {
-        await put(`/api/trabajadores/${editing.id}`, body)
+      let res
+      if (editingId) {
+        res = await apiClient.put(`/api/trabajadores/${editingId}`, form)
       } else {
-        await post('/api/trabajadores', body)
+        res = await apiClient.post('/api/trabajadores', form)
       }
-      setShowModal(false)
-      fetchTrabajadores()
-    } catch (err) {
-      setModalError(err.message || 'Error al guardar')
+      if (res.success) {
+        setModalOpen(false)
+        await fetchTrabajadores()
+      } else {
+        setError(res.error || 'Error al guardar')
+      }
+    } catch {
+      setError('Error de conexion')
     } finally {
       setSaving(false)
     }
   }
 
+  const handleDelete = async (id) => {
+    if (!confirm('Eliminar este trabajador?')) return
+    try {
+      const res = await apiClient.delete(`/api/trabajadores/${id}`)
+      if (res.success) {
+        await fetchTrabajadores()
+      } else {
+        setError(res.error || 'Error al eliminar')
+      }
+    } catch {
+      setError('Error de conexion')
+    }
+  }
+
+  const filtered = trabajadores.filter((t) => {
+    const fullName = `${t.nombre} ${t.apellidoPaterno} ${t.apellidoMaterno}`.toLowerCase()
+    return fullName.includes(search.toLowerCase()) || (t.rut || '').includes(search)
+  })
+
   const columns = [
     {
       key: 'nombre',
-      label: 'Nombre Completo',
-      render: (_, row) => `${row.nombre || ''} ${row.apellidoPaterno || ''} ${row.apellidoMaterno || ''}`.trim(),
+      label: 'Nombre completo',
+      render: (_, row) => `${row.nombre} ${row.apellidoPaterno} ${row.apellidoMaterno || ''}`.trim(),
     },
     {
       key: 'rut',
@@ -149,35 +125,38 @@ export default function TrabajadoresPage() {
     {
       key: 'cargo',
       label: 'Cargo',
-      render: (_, row) => row.contratoActual?.cargo || row.cargo || '-',
+      render: (_, row) => row.contratoActivo?.cargo || row.cargo || '-',
     },
     {
       key: 'estado',
       label: 'Estado',
-      render: (val) => (
-        <Badge variant={val === 'ACTIVO' ? 'success' : 'neutral'}>
-          {val || 'N/A'}
-        </Badge>
-      ),
+      render: (val, row) => {
+        const activo = row.activo !== false && row.estado !== 'INACTIVO'
+        return (
+          <Badge variant={activo ? 'success' : 'neutral'}>
+            {activo ? 'Activo' : 'Inactivo'}
+          </Badge>
+        )
+      },
     },
     {
-      key: 'acciones',
+      key: 'actions',
       label: 'Acciones',
       render: (_, row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => openDetail(row)}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#2563EB] transition-colors"
-            title="Ver detalle"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => openEdit(row)}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#2563EB] transition-colors"
+            onClick={() => handleEdit(row)}
+            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 transition-colors"
             title="Editar"
           >
             <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(row.id)}
+            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-red-50 transition-colors"
+            title="Eliminar"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -185,150 +164,50 @@ export default function TrabajadoresPage() {
   ]
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Trabajadores</h1>
-        <Button onClick={openCreate}>
+        <Button onClick={handleOpenNew}>
           <Plus className="w-4 h-4" />
-          Nuevo Trabajador
+          Nuevo trabajador
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} className="mb-4" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-        <Input
-          name="search"
-          placeholder="Buscar por nombre o RUT..."
-          icon={Search}
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          className="flex-1 max-w-md"
-        />
-        <Select
-          name="filterEstado"
-          value={filterEstado}
-          onChange={(e) => { setFilterEstado(e.target.value); setPage(1) }}
-          options={estadoOptions}
-          placeholder="Estado"
-          className="w-40"
-        />
-      </div>
-
-      <Table
-        columns={columns}
-        data={trabajadores}
-        loading={loading}
-        emptyTitle="Sin trabajadores"
-        emptyDescription="No hay trabajadores registrados."
-        pagination={pagination}
-        onPageChange={setPage}
+      <Input
+        icon={Search}
+        placeholder="Buscar por nombre o RUT..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
       />
 
-      {/* Create/Edit Modal */}
+      <Table columns={columns} data={filtered} loading={loading} emptyMessage="No hay trabajadores" />
+
       <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={editing ? 'Editar Trabajador' : 'Nuevo Trabajador'}
-        size="xl"
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingId ? 'Editar trabajador' : 'Nuevo trabajador'}
+        size="lg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>{editing ? 'Guardar' : 'Crear'}</Button>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} loading={saving}>Guardar</Button>
           </>
         }
       >
-        {modalError && <Alert type="error" message={modalError} className="mb-4" />}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input label="RUT" name="rut" value={form.rut} onChange={handleFormChange} required placeholder="12345678-9" />
-          <Input label="Nombre" name="nombre" value={form.nombre} onChange={handleFormChange} required />
-          <Input label="Apellido Paterno" name="apellidoPaterno" value={form.apellidoPaterno} onChange={handleFormChange} required />
-          <Input label="Apellido Materno" name="apellidoMaterno" value={form.apellidoMaterno} onChange={handleFormChange} />
-          <Input label="Fecha de Nacimiento" name="fechaNacimiento" type="date" value={form.fechaNacimiento} onChange={handleFormChange} />
-          <Input label="Nacionalidad" name="nacionalidad" value={form.nacionalidad} onChange={handleFormChange} />
-          <Select label="Sexo" name="sexo" value={form.sexo} onChange={handleFormChange} options={sexoOptions} />
-          <Select label="Estado Civil" name="estadoCivil" value={form.estadoCivil} onChange={handleFormChange} options={estadoCivilOptions} />
-          <Input label="Dirección" name="direccion" value={form.direccion} onChange={handleFormChange} />
-          <Input label="Comuna" name="comuna" value={form.comuna} onChange={handleFormChange} />
-          <Input label="Teléfono" name="telefono" value={form.telefono} onChange={handleFormChange} />
-          <Input label="Email" name="email" type="email" value={form.email} onChange={handleFormChange} />
-          <Select label="AFP" name="afp" value={form.afp} onChange={handleFormChange} options={AFP_OPTIONS} />
-          <Select label="Salud" name="salud" value={form.salud} onChange={handleFormChange} options={SALUD_OPTIONS} />
-          <Input label="Tasa Salud (%)" name="tasaSalud" type="number" step="0.01" value={form.tasaSalud} onChange={handleFormChange} placeholder="7" />
-          <Input label="Fecha de Ingreso" name="fechaIngreso" type="date" value={form.fechaIngreso} onChange={handleFormChange} required />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input label="RUT" value={form.rut} onChange={(e) => setForm({ ...form, rut: e.target.value })} placeholder="12345678-9" />
+          <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+          <Input label="Apellido paterno" value={form.apellidoPaterno} onChange={(e) => setForm({ ...form, apellidoPaterno: e.target.value })} required />
+          <Input label="Apellido materno" value={form.apellidoMaterno} onChange={(e) => setForm({ ...form, apellidoMaterno: e.target.value })} />
+          <Input label="Fecha nacimiento" type="date" value={form.fechaNacimiento} onChange={(e) => setForm({ ...form, fechaNacimiento: e.target.value })} />
+          <Select label="Sexo" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} options={[{ value: 'M', label: 'Masculino' }, { value: 'F', label: 'Femenino' }]} />
+          <Input label="Nacionalidad" value={form.nacionalidad} onChange={(e) => setForm({ ...form, nacionalidad: e.target.value })} />
+          <Select label="AFP" value={form.afp} onChange={(e) => setForm({ ...form, afp: e.target.value })} options={AFP_LIST.map((a) => ({ value: a, label: a }))} />
+          <Select label="Salud" value={form.salud} onChange={(e) => setForm({ ...form, salud: e.target.value })} options={SALUD_LIST.map((s) => ({ value: s, label: s }))} />
+          <Input label="Fecha ingreso" type="date" value={form.fechaIngreso} onChange={(e) => setForm({ ...form, fechaIngreso: e.target.value })} />
         </div>
-      </Modal>
-
-      {/* Detail Modal */}
-      <Modal
-        isOpen={showDetail}
-        onClose={() => setShowDetail(false)}
-        title="Detalle del Trabajador"
-        size="lg"
-        footer={
-          <Button variant="secondary" onClick={() => setShowDetail(false)}>Cerrar</Button>
-        }
-      >
-        {detailData && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-[#6B7280]">Nombre Completo</p>
-                <p className="text-sm font-medium text-[#111827]">
-                  {`${detailData.nombre} ${detailData.apellidoPaterno} ${detailData.apellidoMaterno || ''}`}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">RUT</p>
-                <p className="text-sm font-medium text-[#111827]">{formatRut(detailData.rut)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Email</p>
-                <p className="text-sm font-medium text-[#111827]">{detailData.email || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Teléfono</p>
-                <p className="text-sm font-medium text-[#111827]">{detailData.telefono || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">AFP</p>
-                <p className="text-sm font-medium text-[#111827]">{detailData.afp || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Salud</p>
-                <p className="text-sm font-medium text-[#111827]">{detailData.salud || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Fecha Ingreso</p>
-                <p className="text-sm font-medium text-[#111827]">{formatDate(detailData.fechaIngreso)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#6B7280]">Estado</p>
-                <Badge variant={detailData.estado === 'ACTIVO' ? 'success' : 'neutral'}>
-                  {detailData.estado || 'N/A'}
-                </Badge>
-              </div>
-            </div>
-            {detailData.contratos && detailData.contratos.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-[#111827] mb-2">Contratos</h4>
-                <div className="space-y-2">
-                  {detailData.contratos.map((c) => (
-                    <div key={c.id} className="p-3 bg-gray-50 rounded-lg border border-[#E5E7EB]">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-[#111827]">{c.cargo || c.tipo}</span>
-                        <Badge variant={c.estado === 'VIGENTE' ? 'success' : 'neutral'}>{c.estado}</Badge>
-                      </div>
-                      <p className="text-xs text-[#6B7280] mt-1">
-                        {c.tipo} | {formatDate(c.fechaInicio)} - {c.fechaTermino ? formatDate(c.fechaTermino) : 'Indefinido'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </Modal>
     </div>
   )

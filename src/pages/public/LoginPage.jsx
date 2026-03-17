@@ -1,90 +1,103 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
-import { Mail, Lock } from 'lucide-react'
+import { Building2, Mail, Lock } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Alert from '../../components/ui/Alert'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, isAuthenticated, role } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  // If already authenticated, redirect
+  if (isAuthenticated && role) {
+    const redirectMap = {
+      SUPER_ADMIN: '/admin',
+      SUPERVISOR: '/supervisor',
+      OWNER: '/empresa',
+      ADMIN: '/empresa',
+      WORKER: '/portal',
+    }
+    navigate(redirectMap[role] || '/', { replace: true })
+    return null
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
-
+    setLoading(true)
     try {
-      const data = await login(email, password)
-      const role = data.user?.role
-
-      switch (role) {
-        case 'SUPER_ADMIN':
-          navigate('/admin', { replace: true })
-          break
-        case 'SUPERVISOR':
-          navigate('/supervisor', { replace: true })
-          break
-        case 'OWNER':
-        case 'ADMIN':
-          navigate('/empresa/dashboard', { replace: true })
-          break
-        case 'WORKER':
-          navigate('/portal', { replace: true })
-          break
-        default:
-          navigate('/', { replace: true })
+      const res = await login(email, password)
+      if (!res.success) {
+        setError(res.error || 'Credenciales incorrectas')
+        return
       }
-    } catch (err) {
-      setError(err.message || 'Error al iniciar sesión')
+      const userRole = res.data.user.role
+      const redirectMap = {
+        SUPER_ADMIN: '/admin',
+        SUPERVISOR: '/supervisor',
+        OWNER: '/empresa',
+        ADMIN: '/empresa',
+        WORKER: '/portal',
+      }
+      navigate(redirectMap[userRole] || '/', { replace: true })
+    } catch {
+      setError('Error de conexion. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-xl shadow-sm border border-[#E5E7EB] p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#2563EB] mb-2">PymeLaboral</h1>
-            <h2 className="text-lg font-semibold text-[#111827]">Iniciar Sesión</h2>
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Building2 className="w-8 h-8 text-[#2563EB]" />
+            <span className="text-2xl font-bold text-[#111827]">PymeLaboral</span>
           </div>
+          <p className="text-sm text-[#6B7280]">Ingresa a tu cuenta</p>
+        </div>
 
-          {error && (
-            <Alert type="error" message={error} className="mb-6" />
-          )}
+        <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert type="error" message={error} onClose={() => setError('')} />
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               label="Email"
-              name="email"
               type="email"
+              name="email"
               icon={Mail}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@empresa.cl"
               required
-              placeholder="tu@email.com"
-              autoComplete="email"
             />
+
             <Input
-              label="Contraseña"
-              name="password"
+              label="Contrasena"
               type="password"
+              name="password"
               icon={Lock}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Tu contrasena"
               required
-              placeholder="Tu contraseña"
-              autoComplete="current-password"
             />
-            <Button type="submit" loading={loading} className="w-full">
-              Iniciar Sesión
+
+            <Button
+              type="submit"
+              loading={loading}
+              className="w-full"
+            >
+              Iniciar sesion
             </Button>
           </form>
         </div>

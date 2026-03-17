@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
-import SupervisorLayout from './layouts/SupervisorLayout'
 import EmpresaLayout from './layouts/EmpresaLayout'
 import PortalLayout from './layouts/PortalLayout'
+import SupervisorLayout from './layouts/SupervisorLayout'
 
 // Public pages
 import LandingPage from './pages/public/LandingPage'
@@ -18,7 +18,7 @@ import SupervisorasPage from './pages/admin/SupervisorasPage'
 import SupervisorDashboard from './pages/supervisor/SupervisorDashboard'
 
 // Empresa pages
-import Dashboard from './pages/empresa/Dashboard'
+import EmpresaDashboard from './pages/empresa/EmpresaDashboard'
 import TrabajadoresPage from './pages/empresa/TrabajadoresPage'
 import ContratosPage from './pages/empresa/ContratosPage'
 import LiquidacionesPage from './pages/empresa/LiquidacionesPage'
@@ -31,13 +31,14 @@ import KarinPage from './pages/empresa/KarinPage'
 import DocumentosPage from './pages/empresa/DocumentosPage'
 import CompliancePage from './pages/empresa/CompliancePage'
 import ConfiguracionPage from './pages/empresa/ConfiguracionPage'
+import ChatPage from './pages/empresa/ChatPage'
 
 // Portal pages
 import PortalDashboard from './pages/portal/PortalDashboard'
-import MisLiquidaciones from './pages/portal/MisLiquidaciones'
-import MiContrato from './pages/portal/MiContrato'
-import MisVacaciones from './pages/portal/MisVacaciones'
-import MiAsistencia from './pages/portal/MiAsistencia'
+import PortalLiquidaciones from './pages/portal/PortalLiquidaciones'
+import PortalAsistencia from './pages/portal/PortalAsistencia'
+import PortalVacaciones from './pages/portal/PortalVacaciones'
+import PortalPermisos from './pages/portal/PortalPermisos'
 
 export default function App() {
   return (
@@ -62,10 +63,10 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Empresa routes - OWNER, ADMIN, or impersonating */}
-      <Route element={<ProtectedRoute allowedRoles={['OWNER', 'ADMIN']} requireImpersonation />}>
+      {/* Empresa routes - OWNER, ADMIN, or impersonating SUPER_ADMIN/SUPERVISOR */}
+      <Route element={<ProtectedRoute allowedRoles={['OWNER', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISOR']} />}>
         <Route element={<EmpresaLayout />}>
-          <Route path="/empresa/dashboard" element={<Dashboard />} />
+          <Route path="/empresa" element={<EmpresaDashboard />} />
           <Route path="/empresa/trabajadores" element={<TrabajadoresPage />} />
           <Route path="/empresa/contratos" element={<ContratosPage />} />
           <Route path="/empresa/liquidaciones" element={<LiquidacionesPage />} />
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="/empresa/documentos" element={<DocumentosPage />} />
           <Route path="/empresa/compliance" element={<CompliancePage />} />
           <Route path="/empresa/configuracion" element={<ConfiguracionPage />} />
+          <Route path="/empresa/chat" element={<ChatPage />} />
         </Route>
       </Route>
 
@@ -85,10 +87,10 @@ export default function App() {
       <Route element={<ProtectedRoute allowedRoles={['WORKER']} />}>
         <Route element={<PortalLayout />}>
           <Route path="/portal" element={<PortalDashboard />} />
-          <Route path="/portal/liquidaciones" element={<MisLiquidaciones />} />
-          <Route path="/portal/contrato" element={<MiContrato />} />
-          <Route path="/portal/vacaciones" element={<MisVacaciones />} />
-          <Route path="/portal/asistencia" element={<MiAsistencia />} />
+          <Route path="/portal/liquidaciones" element={<PortalLiquidaciones />} />
+          <Route path="/portal/asistencia" element={<PortalAsistencia />} />
+          <Route path="/portal/vacaciones" element={<PortalVacaciones />} />
+          <Route path="/portal/permisos" element={<PortalPermisos />} />
         </Route>
       </Route>
 

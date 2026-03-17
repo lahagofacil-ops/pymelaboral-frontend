@@ -1,77 +1,79 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, ToggleLeft, ToggleRight, Building2 } from 'lucide-react'
-import { get, post, put } from '../../api/client'
+import { apiClient } from '../../api/client'
 import Table from '../../components/ui/Table'
-import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+
+const emptyForm = { nombre: '', email: '', password: '' }
 
 export default function SupervisorasPage() {
   const [supervisoras, setSupervisoras] = useState([])
+  const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [showAssign, setShowAssign] = useState(false)
-  const [editing, setEditing] = useState(null)
-  const [assignTarget, setAssignTarget] = useState(null)
-  const [form, setForm] = useState({ nombre: '', email: '', password: '' })
+  const [modalOpen, setModalOpen] = useState(false)
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [modalError, setModalError] = useState('')
-  const [allEmpresas, setAllEmpresas] = useState([])
+  const [selectedSupervisora, setSelectedSupervisora] = useState(null)
   const [selectedEmpresas, setSelectedEmpresas] = useState([])
-  const [assignSaving, setAssignSaving] = useState(false)
 
-  const fetchSupervisoras = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async () => {
     try {
-      const res = await get('/api/admin/supervisoras')
-      if (res.success) setSupervisoras(res.data || [])
-    } catch (err) {
-      setError(err.message)
+      const [supRes, empRes] = await Promise.all([
+        apiClient.get('/api/admin/supervisoras'),
+        apiClient.get('/api/admin/empresas'),
+      ])
+      if (supRes.success) setSupervisoras(supRes.data)
+      if (empRes.success) setEmpresas(empRes.data)
+    } catch {
+      setError('Error de conexion')
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchSupervisoras()
-  }, [fetchSupervisoras])
+    fetchData()
+  }, [fetchData])
 
-  const openCreate = () => {
-    setEditing(null)
-    setForm({ nombre: '', email: '', password: '' })
-    setModalError('')
-    setShowModal(true)
+  const handleOpenNew = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setModalOpen(true)
   }
 
-  const openEdit = (sup) => {
-    setEditing(sup)
+  const handleEdit = (sup) => {
+    setEditingId(sup.id)
     setForm({ nombre: sup.nombre || '', email: sup.email || '', password: '' })
-    setModalError('')
-    setShowModal(true)
-  }
-
-  const handleFormChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    setModalOpen(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
-    setModalError('')
+    setError('')
     try {
-      if (editing) {
+      let res
+      if (editingId) {
         const body = { nombre: form.nombre, email: form.email }
         if (form.password) body.password = form.password
-        await put(`/api/admin/supervisoras/${editing.id}`, body)
+        res = await apiClient.put(`/api/admin/supervisoras/${editingId}`, body)
       } else {
-        await post('/api/admin/supervisoras', form)
+        res = await apiClient.post('/api/admin/supervisoras', form)
       }
-      setShowModal(false)
-      fetchSupervisoras()
-    } catch (err) {
-      setModalError(err.message || 'Error al guardar')
+      if (res.success) {
+        setModalOpen(false)
+        await fetchData()
+      } else {
+        setError(res.error || 'Error al guardar')
+      }
+    } catch {
+      setError('Error de conexion')
     } finally {
       setSaving(false)
     }
@@ -79,47 +81,45 @@ export default function SupervisorasPage() {
 
   const handleToggle = async (sup) => {
     try {
-      await post(`/api/admin/supervisoras/${sup.id}/toggle`)
-      fetchSupervisoras()
-    } catch (err) {
-      setError(err.message)
+      const res = await apiClient.put(`/api/admin/supervisoras/${sup.id}/toggle`)
+      if (res.success) {
+        await fetchData()
+      }
+    } catch {
+      setError('Error de conexion')
     }
   }
 
-  const openAssign = async (sup) => {
-    setAssignTarget(sup)
-    setSelectedEmpresas(sup.empresas?.map((e) => e.id) || [])
-    setModalError('')
-    try {
-      const res = await get('/api/admin/empresas?limit=1000')
-      if (res.success) setAllEmpresas(res.data.empresas || [])
-    } catch (err) {
-      setModalError(err.message)
-    }
-    setShowAssign(true)
+  const handleOpenAssign = (sup) => {
+    setSelectedSupervisora(sup)
+    const assigned = sup.empresas?.map((e) => e.id) || sup.empresaIds || []
+    setSelectedEmpresas(assigned)
+    setAssignOpen(true)
   }
 
-  const toggleEmpresaSelection = (empresaId) => {
+  const handleToggleEmpresa = (id) => {
     setSelectedEmpresas((prev) =>
-      prev.includes(empresaId)
-        ? prev.filter((id) => id !== empresaId)
-        : [...prev, empresaId]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     )
   }
 
-  const handleAssign = async () => {
-    setAssignSaving(true)
-    setModalError('')
+  const handleSaveAssign = async () => {
+    setSaving(true)
     try {
-      await post(`/api/admin/supervisoras/${assignTarget.id}/empresas`, {
-        empresaIds: selectedEmpresas,
-      })
-      setShowAssign(false)
-      fetchSupervisoras()
-    } catch (err) {
-      setModalError(err.message || 'Error al asignar')
+      const res = await apiClient.put(
+        `/api/admin/supervisoras/${selectedSupervisora.id}/empresas`,
+        { empresaIds: selectedEmpresas }
+      )
+      if (res.success) {
+        setAssignOpen(false)
+        await fetchData()
+      } else {
+        setError(res.error || 'Error al asignar')
+      }
+    } catch {
+      setError('Error de conexion')
     } finally {
-      setAssignSaving(false)
+      setSaving(false)
     }
   }
 
@@ -127,44 +127,42 @@ export default function SupervisorasPage() {
     { key: 'nombre', label: 'Nombre' },
     { key: 'email', label: 'Email' },
     {
+      key: '_empresas',
+      label: 'Empresas',
+      render: (_, row) => row.empresas?.length ?? row.empresasCount ?? 0,
+    },
+    {
       key: 'activo',
-      label: 'Activo',
-      render: (val, row) => (
-        <button
-          onClick={() => handleToggle(row)}
-          className="text-[#6B7280] hover:text-[#111827] transition-colors"
-        >
-          {val ? (
-            <ToggleRight className="w-6 h-6 text-[#059669]" />
-          ) : (
-            <ToggleLeft className="w-6 h-6 text-[#6B7280]" />
-          )}
-        </button>
+      label: 'Estado',
+      render: (val) => (
+        <Badge variant={val ? 'success' : 'neutral'}>{val ? 'Activa' : 'Inactiva'}</Badge>
       ),
     },
     {
-      key: 'empresas',
-      label: 'Empresas',
-      render: (val) => val?.length || 0,
-    },
-    {
-      key: 'acciones',
+      key: 'actions',
       label: 'Acciones',
       render: (_, row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => openEdit(row)}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#2563EB] transition-colors"
+            onClick={() => handleOpenAssign(row)}
+            className="p-1.5 rounded-lg text-[#2563EB] hover:bg-blue-50 transition-colors"
+            title="Asignar empresas"
+          >
+            <Building2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleEdit(row)}
+            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 transition-colors"
             title="Editar"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
-            onClick={() => openAssign(row)}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#2563EB] transition-colors"
-            title="Asignar empresas"
+            onClick={() => handleToggle(row)}
+            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 transition-colors"
+            title={row.activo ? 'Desactivar' : 'Activar'}
           >
-            <Building2 className="w-4 h-4" />
+            {row.activo ? <ToggleRight className="w-4 h-4 text-[#059669]" /> : <ToggleLeft className="w-4 h-4" />}
           </button>
         </div>
       ),
@@ -172,83 +170,83 @@ export default function SupervisorasPage() {
   ]
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Supervisoras</h1>
-        <Button onClick={openCreate}>
+        <Button onClick={handleOpenNew}>
           <Plus className="w-4 h-4" />
-          Nueva Supervisora
+          Nueva supervisora
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} className="mb-4" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      <Table
-        columns={columns}
-        data={supervisoras}
-        loading={loading}
-        emptyTitle="Sin supervisoras"
-        emptyDescription="No hay supervisoras registradas."
-      />
+      <Table columns={columns} data={supervisoras} loading={loading} emptyMessage="No hay supervisoras" />
 
+      {/* Create/Edit Modal */}
       <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={editing ? 'Editar Supervisora' : 'Nueva Supervisora'}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingId ? 'Editar supervisora' : 'Nueva supervisora'}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>{editing ? 'Guardar' : 'Crear'}</Button>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} loading={saving}>Guardar</Button>
           </>
         }
       >
-        {modalError && <Alert type="error" message={modalError} className="mb-4" />}
         <div className="space-y-4">
-          <Input label="Nombre" name="nombre" value={form.nombre} onChange={handleFormChange} required />
-          <Input label="Email" name="email" type="email" value={form.email} onChange={handleFormChange} required />
           <Input
-            label={editing ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña'}
-            name="password"
+            label="Nombre"
+            value={form.nombre}
+            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+          <Input
+            label={editingId ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}
             type="password"
             value={form.password}
-            onChange={handleFormChange}
-            required={!editing}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required={!editingId}
           />
         </div>
       </Modal>
 
+      {/* Assign Empresas Modal */}
       <Modal
-        isOpen={showAssign}
-        onClose={() => setShowAssign(false)}
-        title={`Asignar Empresas - ${assignTarget?.nombre || ''}`}
-        size="lg"
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        title={`Asignar empresas a ${selectedSupervisora?.nombre || ''}`}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowAssign(false)}>Cancelar</Button>
-            <Button onClick={handleAssign} loading={assignSaving}>Guardar Asignación</Button>
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveAssign} loading={saving}>Guardar</Button>
           </>
         }
       >
-        {modalError && <Alert type="error" message={modalError} className="mb-4" />}
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {allEmpresas.length === 0 && (
-            <p className="text-sm text-[#6B7280]">No hay empresas disponibles.</p>
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {empresas.length === 0 && (
+            <p className="text-sm text-[#6B7280]">No hay empresas disponibles</p>
           )}
-          {allEmpresas.map((empresa) => (
+          {empresas.map((emp) => (
             <label
-              key={empresa.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-[#E5E7EB] hover:bg-gray-50 cursor-pointer"
+              key={emp.id}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
             >
               <input
                 type="checkbox"
-                checked={selectedEmpresas.includes(empresa.id)}
-                onChange={() => toggleEmpresaSelection(empresa.id)}
-                className="rounded border-[#E5E7EB] text-[#2563EB] focus:ring-[#2563EB]"
+                checked={selectedEmpresas.includes(emp.id)}
+                onChange={() => handleToggleEmpresa(emp.id)}
+                className="w-4 h-4 text-[#2563EB] rounded border-[#E5E7EB] focus:ring-[#2563EB]"
               />
-              <div>
-                <p className="text-sm font-medium text-[#111827]">{empresa.razonSocial}</p>
-                <p className="text-xs text-[#6B7280]">{empresa.rut}</p>
-              </div>
+              <span className="text-sm text-[#111827]">{emp.razonSocial}</span>
             </label>
           ))}
         </div>

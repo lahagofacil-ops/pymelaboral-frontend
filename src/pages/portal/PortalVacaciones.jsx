@@ -1,51 +1,53 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Check, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { apiClient } from '../../api/client'
+import { useAuth } from '../../context/AuthContext'
 import { formatDate } from '../../lib/utils'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Card from '../../components/ui/Card'
 
-export default function VacacionesPage() {
+export default function PortalVacaciones() {
+  const { user } = useAuth()
   const [vacaciones, setVacaciones] = useState([])
-  const [trabajadores, setTrabajadores] = useState([])
+  const [saldo, setSaldo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ trabajadorId: '', fechaDesde: '', fechaHasta: '', observacion: '' })
+  const [form, setForm] = useState({ fechaDesde: '', fechaHasta: '', observacion: '' })
   const [saving, setSaving] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
-      const [vRes, tRes] = await Promise.all([
+      const [vRes, sRes] = await Promise.all([
         apiClient.get('/api/vacaciones'),
-        apiClient.get('/api/trabajadores'),
+        user?.trabajadorId ? apiClient.get(`/api/vacaciones/saldo/${user.trabajadorId}`) : Promise.resolve({ success: false }),
       ])
       if (vRes.success) setVacaciones(vRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
+      if (sRes.success) setSaldo(sRes.data)
     } catch {
       setError('Error de conexion')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user?.trabajadorId])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  const handleSave = async () => {
+  const handleSolicitar = async () => {
     setSaving(true)
     setError('')
     try {
       const res = await apiClient.post('/api/vacaciones', form)
       if (res.success) {
         setModalOpen(false)
-        setForm({ trabajadorId: '', fechaDesde: '', fechaHasta: '', observacion: '' })
+        setForm({ fechaDesde: '', fechaHasta: '', observacion: '' })
         await fetchData()
       } else {
         setError(res.error || 'Error al solicitar')
@@ -57,70 +59,23 @@ export default function VacacionesPage() {
     }
   }
 
-  const handleAprobar = async (id) => {
-    try {
-      const res = await apiClient.put(`/api/vacaciones/${id}/aprobar`)
-      if (res.success) await fetchData()
-      else setError(res.error || 'Error al aprobar')
-    } catch {
-      setError('Error de conexion')
-    }
-  }
-
-  const handleRechazar = async (id) => {
-    try {
-      const res = await apiClient.put(`/api/vacaciones/${id}/rechazar`)
-      if (res.success) await fetchData()
-      else setError(res.error || 'Error al rechazar')
-    } catch {
-      setError('Error de conexion')
-    }
-  }
-
   const estadoBadge = (estado) => {
     const map = { APROBADA: 'success', PENDIENTE: 'warning', RECHAZADA: 'danger' }
     return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
   }
 
   const columns = [
-    {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
-    },
     { key: 'fechaDesde', label: 'Desde', render: (val) => formatDate(val) },
     { key: 'fechaHasta', label: 'Hasta', render: (val) => formatDate(val) },
-    { key: 'diasHabiles', label: 'Dias Habiles' },
+    { key: 'diasHabiles', label: 'Dias' },
     { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
-    {
-      key: 'actions',
-      label: 'Acciones',
-      render: (_, row) => row.estado === 'PENDIENTE' ? (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => handleAprobar(row.id)}
-            className="p-1.5 rounded-lg text-[#059669] hover:bg-green-50 transition-colors"
-            title="Aprobar"
-          >
-            <Check className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleRechazar(row.id)}
-            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-red-50 transition-colors"
-            title="Rechazar"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      ) : null,
-    },
   ]
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#111827]">Vacaciones</h1>
-        <Button onClick={() => { setForm({ trabajadorId: '', fechaDesde: '', fechaHasta: '', observacion: '' }); setModalOpen(true) }}>
+        <h1 className="text-2xl font-bold text-[#111827]">Mis Vacaciones</h1>
+        <Button onClick={() => { setForm({ fechaDesde: '', fechaHasta: '', observacion: '' }); setModalOpen(true) }}>
           <Plus className="w-4 h-4" />
           Solicitar vacaciones
         </Button>
@@ -128,7 +83,24 @@ export default function VacacionesPage() {
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      <Table columns={columns} data={vacaciones} loading={loading} emptyMessage="No hay solicitudes de vacaciones" />
+      {saldo && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <p className="text-sm text-[#6B7280]">Dias disponibles</p>
+            <p className="text-2xl font-bold text-[#111827]">{saldo.diasDisponibles ?? saldo.disponibles ?? 0}</p>
+          </Card>
+          <Card>
+            <p className="text-sm text-[#6B7280]">Dias tomados</p>
+            <p className="text-2xl font-bold text-[#111827]">{saldo.diasTomados ?? saldo.tomados ?? 0}</p>
+          </Card>
+          <Card>
+            <p className="text-sm text-[#6B7280]">Dias totales</p>
+            <p className="text-2xl font-bold text-[#111827]">{saldo.diasTotales ?? saldo.total ?? 15}</p>
+          </Card>
+        </div>
+      )}
+
+      <Table columns={columns} data={vacaciones} loading={loading} emptyMessage="No tienes solicitudes de vacaciones" />
 
       <Modal
         open={modalOpen}
@@ -137,17 +109,11 @@ export default function VacacionesPage() {
         footer={
           <>
             <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>Solicitar</Button>
+            <Button onClick={handleSolicitar} loading={saving}>Solicitar</Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Select
-            label="Trabajador"
-            value={form.trabajadorId}
-            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
-            options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
-          />
           <Input label="Desde" type="date" value={form.fechaDesde} onChange={(e) => setForm({ ...form, fechaDesde: e.target.value })} />
           <Input label="Hasta" type="date" value={form.fechaHasta} onChange={(e) => setForm({ ...form, fechaHasta: e.target.value })} />
           <Input label="Observacion" value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })} />

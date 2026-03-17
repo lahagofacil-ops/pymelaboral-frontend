@@ -1,59 +1,47 @@
-import { useState } from 'react'
-import { X, Info, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
+import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { cn } from '../../lib/utils'
 
 const typeConfig = {
-  info: {
-    icon: Info,
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-[#2563EB]',
-    iconColor: 'text-[#2563EB]',
-  },
   success: {
-    icon: CheckCircle,
-    bg: 'bg-green-50',
-    border: 'border-green-200',
+    bg: 'bg-green-50 border-[#059669]',
     text: 'text-[#059669]',
-    iconColor: 'text-[#059669]',
-  },
-  warning: {
-    icon: AlertTriangle,
-    bg: 'bg-yellow-50',
-    border: 'border-yellow-200',
-    text: 'text-[#D97706]',
-    iconColor: 'text-[#D97706]',
+    icon: CheckCircle,
   },
   error: {
-    icon: XCircle,
-    bg: 'bg-red-50',
-    border: 'border-red-200',
+    bg: 'bg-red-50 border-[#DC2626]',
     text: 'text-[#DC2626]',
-    iconColor: 'text-[#DC2626]',
+    icon: AlertCircle,
+  },
+  warning: {
+    bg: 'bg-yellow-50 border-[#D97706]',
+    text: 'text-[#D97706]',
+    icon: AlertTriangle,
+  },
+  info: {
+    bg: 'bg-blue-50 border-[#2563EB]',
+    text: 'text-[#2563EB]',
+    icon: Info,
   },
 }
 
-export default function Alert({ type = 'info', message, closable = false, className = '' }) {
-  const [visible, setVisible] = useState(true)
-
-  if (!visible) return null
-
+export default function Alert({ type = 'info', message, onClose, className = '' }) {
   const config = typeConfig[type] || typeConfig.info
   const Icon = config.icon
 
   return (
     <div
-      className={`
-        flex items-start gap-3 p-4 rounded-lg border
-        ${config.bg} ${config.border}
-        ${className}
-      `}
+      className={cn(
+        'flex items-start gap-3 px-4 py-3 rounded-lg border',
+        config.bg,
+        className
+      )}
     >
-      <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${config.iconColor}`} />
-      <p className={`text-sm flex-1 ${config.text}`}>{message}</p>
-      {closable && (
+      <Icon className={cn('w-5 h-5 shrink-0 mt-0.5', config.text)} />
+      <p className={cn('text-sm flex-1', config.text)}>{message}</p>
+      {onClose && (
         <button
-          onClick={() => setVisible(false)}
-          className={`flex-shrink-0 p-0.5 rounded ${config.text} hover:opacity-70`}
+          onClick={onClose}
+          className={cn('p-0.5 rounded hover:bg-black/5 shrink-0', config.text)}
         >
           <X className="w-4 h-4" />
         </button>

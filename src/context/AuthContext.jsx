@@ -1,73 +1,50 @@
-import { createContext, useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { get, post } from '../api/client'
+import { createContext, useContext, useState, useCallback } from 'react'
+import { apiClient } from '../api/client'
 
-export const AuthContext = createContext(null)
+const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const navigate = useNavigate()
+  // CRITICAL: Initialize synchronously from sessionStorage to prevent flash redirect
+  const [user, setUser] = useState(() => {
+    const stored = sessionStorage.getItem('user')
+    return stored ? JSON.parse(stored) : null
+  })
+  const [loading, setLoading] = useState(() => {
+    // Only loading if we have tokens but haven't verified yet
+    return !!sessionStorage.getItem('accessToken') && !sessionStorage.getItem('user')
+  })
 
-  const refreshUser = useCallback(async () => {
-    try {
-      const result = await get('/api/auth/me')
-      if (result.success && result.data) {
-        setUser(result.data)
-        setIsAuthenticated(true)
-      } else {
-        setUser(null)
-        setIsAuthenticated(false)
-      }
-    } catch {
-      setUser(null)
-      setIsAuthenticated(false)
-    }
+  const login = useCallback(async (email, password) => {
+    const res = await apiClient.post('/api/auth/login', { email, password })
+    if (!res.success) return res
+    sessionStorage.setItem('accessToken', res.data.accessToken)
+    sessionStorage.setItem('refreshToken', res.data.refreshToken)
+    sessionStorage.setItem('user', JSON.stringify(res.data.user))
+    setUser(res.data.user)
+    return res
   }, [])
 
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = sessionStorage.getItem('accessToken')
-      if (token) {
-        await refreshUser()
-      }
-      setLoading(false)
-    }
-    initAuth()
-  }, [refreshUser])
-
-  const login = async (email, password) => {
-    const result = await post('/api/auth/login', { email, password })
-    if (result.success && result.data) {
-      sessionStorage.setItem('accessToken', result.data.accessToken)
-      sessionStorage.setItem('refreshToken', result.data.refreshToken)
-      setUser(result.data.user)
-      setIsAuthenticated(true)
-      return result.data
-    }
-    throw new Error(result.error || 'Error al iniciar sesión')
-  }
-
   const logout = useCallback(() => {
-    sessionStorage.clear()
+    sessionStorage.removeItem('accessToken')
+    sessionStorage.removeItem('refreshToken')
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem('impersonatedEmpresaId')
+    sessionStorage.removeItem('impersonatedEmpresaNombre')
     setUser(null)
-    setIsAuthenticated(false)
-    navigate('/login')
-  }, [navigate])
+  }, [])
 
-  const value = {
-    user,
-    loading,
-    isAuthenticated,
-    login,
-    logout,
-    refreshUser,
-  }
+  const isAuthenticated = !!user
+  const role = user?.role || null
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, role, login, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   )
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
 }

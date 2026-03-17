@@ -1,92 +1,84 @@
-const BASE_URL = import.meta.env.VITE_API_URL || ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-function getHeaders() {
-  const headers = {
-    'Content-Type': 'application/json',
-  }
+let isRefreshing = false
+let refreshPromise = null
 
-  const token = sessionStorage.getItem('accessToken')
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-
-  const empresaId = sessionStorage.getItem('empresaId')
-  if (empresaId) {
-    headers['X-Empresa-Id'] = empresaId
-  }
-
-  return headers
-}
-
-async function refreshAccessToken() {
+async function refreshTokens() {
   const refreshToken = sessionStorage.getItem('refreshToken')
-  if (!refreshToken) {
-    throw new Error('No refresh token available')
-  }
+  if (!refreshToken) return false
 
-  const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  })
-
-  if (!response.ok) {
-    sessionStorage.clear()
-    window.location.href = '/login'
-    throw new Error('Session expired')
-  }
-
-  const result = await response.json()
-  if (result.success && result.data) {
-    sessionStorage.setItem('accessToken', result.data.accessToken)
-    if (result.data.refreshToken) {
-      sessionStorage.setItem('refreshToken', result.data.refreshToken)
+  try {
+    const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+    const data = await res.json()
+    if (data.success) {
+      sessionStorage.setItem('accessToken', data.data.accessToken)
+      sessionStorage.setItem('refreshToken', data.data.refreshToken)
+      sessionStorage.setItem('user', JSON.stringify(data.data.user))
+      return true
     }
-    return result.data.accessToken
+    return false
+  } catch {
+    return false
   }
-
-  sessionStorage.clear()
-  window.location.href = '/login'
-  throw new Error('Session expired')
 }
 
-async function request(method, path, body) {
-  let response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: getHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  })
+async function request(method, url, body = null) {
+  const fullUrl = `${BASE_URL}${url}`
 
-  if (response.status === 401) {
-    try {
-      await refreshAccessToken()
-      response = await fetch(`${BASE_URL}${path}`, {
-        method,
-        headers: getHeaders(),
-        body: body ? JSON.stringify(body) : undefined,
-      })
-    } catch {
-      sessionStorage.clear()
-      window.location.href = '/login'
-      throw new Error('Session expired')
+  const buildHeaders = () => {
+    const headers = { 'Content-Type': 'application/json' }
+    const token = sessionStorage.getItem('accessToken')
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const empresaId = sessionStorage.getItem('impersonatedEmpresaId')
+    if (empresaId) headers['X-Empresa-Id'] = empresaId
+    return headers
+  }
+
+  const buildOptions = () => {
+    const options = { method, headers: buildHeaders() }
+    if (body && method !== 'GET') options.body = JSON.stringify(body)
+    return options
+  }
+
+  try {
+    let res = await fetch(fullUrl, buildOptions())
+
+    if (res.status === 401) {
+      if (!isRefreshing) {
+        isRefreshing = true
+        refreshPromise = refreshTokens()
+      }
+      const refreshed = await refreshPromise
+      isRefreshing = false
+      refreshPromise = null
+
+      if (refreshed) {
+        res = await fetch(fullUrl, buildOptions())
+        return await res.json()
+      } else {
+        sessionStorage.removeItem('accessToken')
+        sessionStorage.removeItem('refreshToken')
+        sessionStorage.removeItem('user')
+        sessionStorage.removeItem('impersonatedEmpresaId')
+        sessionStorage.removeItem('impersonatedEmpresaNombre')
+        window.location.href = '/login'
+        return { success: false, error: 'Sesión expirada' }
+      }
     }
+
+    return await res.json()
+  } catch {
+    return { success: false, error: 'Error de conexión' }
   }
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    const error = new Error(data.error || `Request failed with status ${response.status}`)
-    error.status = response.status
-    error.data = data
-    throw error
-  }
-
-  return data
 }
 
-export const get = (path) => request('GET', path)
-export const post = (path, body) => request('POST', path, body)
-export const put = (path, body) => request('PUT', path, body)
-export const del = (path, body) => request('DELETE', path, body)
-
-export default { get, post, put, del }
+export const apiClient = {
+  get: (url) => request('GET', url),
+  post: (url, body) => request('POST', url, body),
+  put: (url, body) => request('PUT', url, body),
+  delete: (url) => request('DELETE', url),
+}

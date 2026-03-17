@@ -1,25 +1,20 @@
-import { Building2, X } from 'lucide-react'
-import { useEmpresa } from '../hooks/useEmpresa'
+import { useEmpresa } from '../context/EmpresaContext'
 
 export default function ImpersonationBar() {
-  const { empresaData, isImpersonating, stopImpersonation } = useEmpresa()
+  const { empresaNombre, isImpersonating, exitEmpresa } = useEmpresa()
 
-  if (!isImpersonating || !empresaData) return null
+  if (!isImpersonating) return null
 
   return (
-    <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Building2 className="w-4 h-4 text-[#D97706]" />
-        <span className="text-sm font-medium text-[#D97706]">
-          Operando como: {empresaData.razonSocial || empresaData.nombre || 'Empresa'}
-        </span>
-      </div>
+    <div className="bg-[#D97706] text-white px-4 py-2 flex items-center justify-between text-sm">
+      <span>
+        Estas viendo <strong>{empresaNombre}</strong>
+      </span>
       <button
-        onClick={stopImpersonation}
-        className="inline-flex items-center gap-1 text-sm font-medium text-[#D97706] hover:text-[#DC2626] transition-colors"
+        onClick={exitEmpresa}
+        className="px-3 py-1 bg-white text-[#D97706] rounded font-medium hover:bg-yellow-50 transition-colors"
       >
-        <X className="w-4 h-4" />
-        Salir de empresa
+        Salir
       </button>
     </div>
   )

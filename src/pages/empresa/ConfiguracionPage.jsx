@@ -1,213 +1,98 @@
 import { useState, useEffect } from 'react'
-import { Save, UserPlus, Link } from 'lucide-react'
-import { get, put, post } from '../../api/client'
+import { Save, UserPlus } from 'lucide-react'
+import { apiClient } from '../../api/client'
+import { REGIONES } from '../../lib/constants'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import Card from '../../components/ui/Card'
 import Table from '../../components/ui/Table'
+import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
 import Spinner from '../../components/ui/Spinner'
-import { REGIONES_CHILE } from '../../lib/constants'
-
-const tabs = [
-  { id: 'datos', label: 'Datos Empresa' },
-  { id: 'laboral', label: 'Configuración Laboral' },
-  { id: 'usuarios', label: 'Usuarios' },
-]
-
-const roleOptions = [
-  { value: 'ADMIN', label: 'Administrador' },
-  { value: 'OWNER', label: 'Propietario' },
-]
-
-const gratificacionOptions = [
-  { value: 'ARTICULO_50', label: 'Art. 50 (Proporcional)' },
-  { value: 'ARTICULO_47', label: 'Art. 47 (Tope)' },
-]
+import { roleLabel } from '../../lib/utils'
 
 export default function ConfiguracionPage() {
-  const [activeTab, setActiveTab] = useState('datos')
+  const [empresa, setEmpresa] = useState(null)
+  const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  // Datos Empresa
-  const [empresaForm, setEmpresaForm] = useState({
-    razonSocial: '', nombreFantasia: '', rut: '', giro: '',
-    direccion: '', comuna: '', region: '', telefono: '', email: '',
-    representanteLegal: '', representanteRut: '',
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    razonSocial: '', rut: '', giro: '', direccion: '', comuna: '', region: '', email: '',
   })
-
-  // Config Laboral
-  const [laboralForm, setLaboralForm] = useState({
-    mutualidad: '', tasaMutual: '', sistemaGratificacion: '',
-  })
-
-  // Usuarios
-  const [usuarios, setUsuarios] = useState([])
-  const [loadingUsuarios, setLoadingUsuarios] = useState(false)
-  const [inviteForm, setInviteForm] = useState({ email: '', nombre: '', role: 'ADMIN' })
-  const [inviting, setInviting] = useState(false)
-  const [vincularForm, setVincularForm] = useState({ userId: '', trabajadorId: '' })
-  const [vinculando, setVinculando] = useState(false)
-  const [trabajadores, setTrabajadores] = useState([])
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteForm, setInviteForm] = useState({ email: '', nombre: '', password: '', role: 'ADMIN' })
 
   useEffect(() => {
-    const fetchEmpresa = async () => {
+    const fetchData = async () => {
       try {
-        const res = await get('/api/empresa')
-        if (res.success && res.data) {
-          const e = res.data
-          setEmpresaForm({
-            razonSocial: e.razonSocial || '',
-            nombreFantasia: e.nombreFantasia || '',
-            rut: e.rut || '',
-            giro: e.giro || '',
-            direccion: e.direccion || '',
-            comuna: e.comuna || '',
-            region: e.region || '',
-            telefono: e.telefono || '',
-            email: e.email || '',
-            representanteLegal: e.representanteLegal || '',
-            representanteRut: e.representanteRut || '',
-          })
-          setLaboralForm({
-            mutualidad: e.mutualidad || '',
-            tasaMutual: e.tasaMutual || '',
-            sistemaGratificacion: e.sistemaGratificacion || '',
+        const [eRes, uRes] = await Promise.all([
+          apiClient.get('/api/empresa'),
+          apiClient.get('/api/empresa/usuarios'),
+        ])
+        if (eRes.success) {
+          setEmpresa(eRes.data)
+          setForm({
+            razonSocial: eRes.data.razonSocial || '',
+            rut: eRes.data.rut || '',
+            giro: eRes.data.giro || '',
+            direccion: eRes.data.direccion || '',
+            comuna: eRes.data.comuna || '',
+            region: eRes.data.region || '',
+            email: eRes.data.email || '',
           })
         }
-      } catch (err) {
-        setError(err.message)
+        if (uRes.success) setUsuarios(uRes.data)
+      } catch {
+        setError('Error de conexion')
       } finally {
         setLoading(false)
       }
     }
-    fetchEmpresa()
+    fetchData()
   }, [])
 
-  useEffect(() => {
-    if (activeTab === 'usuarios') {
-      fetchUsuarios()
-      fetchTrabajadores()
-    }
-  }, [activeTab])
-
-  const fetchUsuarios = async () => {
-    setLoadingUsuarios(true)
-    try {
-      const res = await get('/api/empresa/usuarios')
-      if (res.success) setUsuarios(res.data || [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoadingUsuarios(false)
-    }
-  }
-
-  const fetchTrabajadores = async () => {
-    try {
-      const res = await get('/api/trabajadores?limit=1000')
-      if (res.success) setTrabajadores(res.data.trabajadores || [])
-    } catch {}
-  }
-
-  const handleSaveEmpresa = async () => {
+  const handleSave = async () => {
     setSaving(true)
     setError('')
     setSuccess('')
     try {
-      await put('/api/empresa', empresaForm)
-      setSuccess('Datos de empresa guardados correctamente')
-    } catch (err) {
-      setError(err.message || 'Error al guardar')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleSaveLaboral = async () => {
-    setSaving(true)
-    setError('')
-    setSuccess('')
-    try {
-      const body = {
-        ...laboralForm,
-        tasaMutual: laboralForm.tasaMutual ? parseFloat(laboralForm.tasaMutual) : null,
+      const res = await apiClient.put('/api/empresa', form)
+      if (res.success) {
+        setSuccess('Configuracion guardada')
+        setEmpresa(res.data)
+      } else {
+        setError(res.error || 'Error al guardar')
       }
-      await put('/api/empresa', body)
-      setSuccess('Configuración laboral guardada correctamente')
-    } catch (err) {
-      setError(err.message || 'Error al guardar')
+    } catch {
+      setError('Error de conexion')
     } finally {
       setSaving(false)
     }
   }
 
   const handleInvite = async () => {
-    setInviting(true)
+    setSaving(true)
     setError('')
-    setSuccess('')
     try {
-      await post('/api/empresa/usuarios', inviteForm)
-      setSuccess('Usuario invitado correctamente')
-      setInviteForm({ email: '', nombre: '', role: 'ADMIN' })
-      fetchUsuarios()
-    } catch (err) {
-      setError(err.message || 'Error al invitar usuario')
+      const res = await apiClient.post('/api/empresa/usuarios', inviteForm)
+      if (res.success) {
+        setInviteOpen(false)
+        setInviteForm({ email: '', nombre: '', password: '', role: 'ADMIN' })
+        const uRes = await apiClient.get('/api/empresa/usuarios')
+        if (uRes.success) setUsuarios(uRes.data)
+      } else {
+        setError(res.error || 'Error al invitar')
+      }
+    } catch {
+      setError('Error de conexion')
     } finally {
-      setInviting(false)
+      setSaving(false)
     }
   }
-
-  const handleVincular = async () => {
-    setVinculando(true)
-    setError('')
-    setSuccess('')
-    try {
-      await post('/api/empresa/usuarios/vincular', vincularForm)
-      setSuccess('Usuario vinculado al trabajador correctamente')
-      setVincularForm({ userId: '', trabajadorId: '' })
-      fetchUsuarios()
-    } catch (err) {
-      setError(err.message || 'Error al vincular')
-    } finally {
-      setVinculando(false)
-    }
-  }
-
-  const regionOptions = REGIONES_CHILE.map((r) => ({ value: r, label: r }))
-
-  const usuarioColumns = [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'email', label: 'Email' },
-    {
-      key: 'role',
-      label: 'Rol',
-      render: (val) => <Badge variant="info">{val}</Badge>,
-    },
-    {
-      key: 'activo',
-      label: 'Estado',
-      render: (val) => (
-        <Badge variant={val !== false ? 'success' : 'neutral'}>
-          {val !== false ? 'Activo' : 'Inactivo'}
-        </Badge>
-      ),
-    },
-  ]
-
-  const trabajadorOptions = trabajadores.map((t) => ({
-    value: t.id,
-    label: `${t.nombre} ${t.apellidoPaterno || ''}`.trim(),
-  }))
-
-  const usuarioOptions = usuarios.map((u) => ({
-    value: u.id,
-    label: `${u.nombre || u.email}`,
-  }))
 
   if (loading) {
     return (
@@ -217,159 +102,92 @@ export default function ConfiguracionPage() {
     )
   }
 
+  const userColumns = [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'email', label: 'Email' },
+    {
+      key: 'role',
+      label: 'Rol',
+      render: (val) => <Badge variant="info">{roleLabel(val)}</Badge>,
+    },
+    {
+      key: 'activo',
+      label: 'Estado',
+      render: (val) => <Badge variant={val !== false ? 'success' : 'neutral'}>{val !== false ? 'Activo' : 'Inactivo'}</Badge>,
+    },
+  ]
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-[#111827] mb-6">Configuración</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-[#111827]">Configuracion</h1>
 
-      {error && <Alert type="error" message={error} className="mb-4" />}
-      {success && <Alert type="success" message={success} closable className="mb-4" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
-      {/* Tabs */}
-      <div className="flex border-b border-[#E5E7EB] mb-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-[#2563EB] text-[#2563EB]'
-                : 'border-transparent text-[#6B7280] hover:text-[#111827]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Datos Empresa */}
-      {activeTab === 'datos' && (
-        <div className="bg-white rounded-lg border border-[#E5E7EB] p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Input label="Razón Social" name="razonSocial" value={empresaForm.razonSocial} onChange={(e) => setEmpresaForm({ ...empresaForm, razonSocial: e.target.value })} />
-            <Input label="Nombre Fantasía" name="nombreFantasia" value={empresaForm.nombreFantasia} onChange={(e) => setEmpresaForm({ ...empresaForm, nombreFantasia: e.target.value })} />
-            <Input label="RUT" name="rut" value={empresaForm.rut} onChange={(e) => setEmpresaForm({ ...empresaForm, rut: e.target.value })} />
-            <Input label="Giro" name="giro" value={empresaForm.giro} onChange={(e) => setEmpresaForm({ ...empresaForm, giro: e.target.value })} />
-            <Input label="Dirección" name="direccion" value={empresaForm.direccion} onChange={(e) => setEmpresaForm({ ...empresaForm, direccion: e.target.value })} />
-            <Input label="Comuna" name="comuna" value={empresaForm.comuna} onChange={(e) => setEmpresaForm({ ...empresaForm, comuna: e.target.value })} />
-            <Select label="Región" name="region" value={empresaForm.region} onChange={(e) => setEmpresaForm({ ...empresaForm, region: e.target.value })} options={regionOptions} />
-            <Input label="Teléfono" name="telefono" value={empresaForm.telefono} onChange={(e) => setEmpresaForm({ ...empresaForm, telefono: e.target.value })} />
-            <Input label="Email" name="email" type="email" value={empresaForm.email} onChange={(e) => setEmpresaForm({ ...empresaForm, email: e.target.value })} />
-            <Input label="Representante Legal" name="representanteLegal" value={empresaForm.representanteLegal} onChange={(e) => setEmpresaForm({ ...empresaForm, representanteLegal: e.target.value })} />
-            <Input label="RUT Representante" name="representanteRut" value={empresaForm.representanteRut} onChange={(e) => setEmpresaForm({ ...empresaForm, representanteRut: e.target.value })} />
-          </div>
-          <Button onClick={handleSaveEmpresa} loading={saving}>
+      {/* Company Settings */}
+      <Card title="Datos de la empresa">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input label="Razon Social" value={form.razonSocial} onChange={(e) => setForm({ ...form, razonSocial: e.target.value })} />
+          <Input label="RUT" value={form.rut} onChange={(e) => setForm({ ...form, rut: e.target.value })} />
+          <Input label="Giro" value={form.giro} onChange={(e) => setForm({ ...form, giro: e.target.value })} />
+          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="Direccion" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} />
+          <Input label="Comuna" value={form.comuna} onChange={(e) => setForm({ ...form, comuna: e.target.value })} />
+          <Select
+            label="Region"
+            value={form.region}
+            onChange={(e) => setForm({ ...form, region: e.target.value })}
+            options={REGIONES.map((r) => ({ value: r, label: r }))}
+          />
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button onClick={handleSave} loading={saving}>
             <Save className="w-4 h-4" />
-            Guardar Cambios
+            Guardar cambios
           </Button>
         </div>
-      )}
+      </Card>
 
-      {/* Config Laboral */}
-      {activeTab === 'laboral' && (
-        <div className="bg-white rounded-lg border border-[#E5E7EB] p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Input
-              label="Mutualidad"
-              name="mutualidad"
-              value={laboralForm.mutualidad}
-              onChange={(e) => setLaboralForm({ ...laboralForm, mutualidad: e.target.value })}
-              placeholder="IST, ACHS, Mutual de Seguridad..."
-            />
-            <Input
-              label="Tasa Mutual (%)"
-              name="tasaMutual"
-              type="number"
-              step="0.01"
-              value={laboralForm.tasaMutual}
-              onChange={(e) => setLaboralForm({ ...laboralForm, tasaMutual: e.target.value })}
-              placeholder="0.95"
-            />
-            <Select
-              label="Sistema de Gratificación"
-              name="sistemaGratificacion"
-              value={laboralForm.sistemaGratificacion}
-              onChange={(e) => setLaboralForm({ ...laboralForm, sistemaGratificacion: e.target.value })}
-              options={gratificacionOptions}
-            />
-          </div>
-          <Button onClick={handleSaveLaboral} loading={saving}>
-            <Save className="w-4 h-4" />
-            Guardar Configuración
-          </Button>
-        </div>
-      )}
-
-      {/* Usuarios */}
-      {activeTab === 'usuarios' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg border border-[#E5E7EB] p-6">
-            <h3 className="text-lg font-semibold text-[#111827] mb-4">Usuarios de la Empresa</h3>
-            <Table
-              columns={usuarioColumns}
-              data={usuarios}
-              loading={loadingUsuarios}
-              emptyTitle="Sin usuarios"
-              emptyDescription="No hay usuarios registrados."
-            />
-          </div>
-
-          <div className="bg-white rounded-lg border border-[#E5E7EB] p-6">
-            <h3 className="text-lg font-semibold text-[#111827] mb-4">Invitar Usuario</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <Input
-                label="Email"
-                name="inviteEmail"
-                type="email"
-                value={inviteForm.email}
-                onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                required
-              />
-              <Input
-                label="Nombre"
-                name="inviteNombre"
-                value={inviteForm.nombre}
-                onChange={(e) => setInviteForm({ ...inviteForm, nombre: e.target.value })}
-                required
-              />
-              <Select
-                label="Rol"
-                name="inviteRole"
-                value={inviteForm.role}
-                onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                options={roleOptions}
-              />
-            </div>
-            <Button onClick={handleInvite} loading={inviting}>
+      {/* Users */}
+      <Card title="Usuarios">
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setInviteOpen(true)}>
               <UserPlus className="w-4 h-4" />
-              Invitar Usuario
+              Invitar usuario
             </Button>
           </div>
-
-          <div className="bg-white rounded-lg border border-[#E5E7EB] p-6">
-            <h3 className="text-lg font-semibold text-[#111827] mb-4">Vincular Usuario a Trabajador</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <Select
-                label="Usuario"
-                name="vincularUserId"
-                value={vincularForm.userId}
-                onChange={(e) => setVincularForm({ ...vincularForm, userId: e.target.value })}
-                options={usuarioOptions}
-              />
-              <Select
-                label="Trabajador"
-                name="vincularTrabajadorId"
-                value={vincularForm.trabajadorId}
-                onChange={(e) => setVincularForm({ ...vincularForm, trabajadorId: e.target.value })}
-                options={trabajadorOptions}
-              />
-            </div>
-            <Button variant="secondary" onClick={handleVincular} loading={vinculando}>
-              <Link className="w-4 h-4" />
-              Vincular
-            </Button>
-          </div>
+          <Table columns={userColumns} data={usuarios} emptyMessage="No hay usuarios" />
         </div>
-      )}
+      </Card>
+
+      {/* Invite Modal */}
+      <Modal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        title="Invitar usuario"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
+            <Button onClick={handleInvite} loading={saving}>Invitar</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input label="Nombre" value={inviteForm.nombre} onChange={(e) => setInviteForm({ ...inviteForm, nombre: e.target.value })} required />
+          <Input label="Email" type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} required />
+          <Input label="Contrasena" type="password" value={inviteForm.password} onChange={(e) => setInviteForm({ ...inviteForm, password: e.target.value })} required />
+          <Select
+            label="Rol"
+            value={inviteForm.role}
+            onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+            options={[
+              { value: 'ADMIN', label: 'Administrador' },
+              { value: 'WORKER', label: 'Trabajador' },
+            ]}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }

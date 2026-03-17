@@ -1,16 +1,19 @@
+import { cn } from '../../lib/utils'
+
 export default function Input({
   label,
-  name,
-  type = 'text',
   error,
   icon: Icon,
   className = '',
+  id,
   ...props
 }) {
+  const inputId = id || props.name || label?.toLowerCase().replace(/\s+/g, '-')
+
   return (
-    <div className={className}>
+    <div className="w-full">
       {label && (
-        <label htmlFor={name} className="block text-sm font-medium text-[#111827] mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-[#111827] mb-1">
           {label}
         </label>
       )}
@@ -21,17 +24,15 @@ export default function Input({
           </div>
         )}
         <input
-          id={name}
-          name={name}
-          type={type}
-          className={`
-            block w-full rounded-lg border bg-white px-3 py-2 text-sm text-[#111827]
-            placeholder:text-[#6B7280]
-            focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent
-            disabled:bg-gray-50 disabled:text-[#6B7280] disabled:cursor-not-allowed
-            ${Icon ? 'pl-10' : ''}
-            ${error ? 'border-[#DC2626] focus:ring-[#DC2626]' : 'border-[#E5E7EB]'}
-          `}
+          id={inputId}
+          className={cn(
+            'block w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] placeholder-[#6B7280] transition-colors',
+            'focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent',
+            'disabled:bg-gray-50 disabled:cursor-not-allowed',
+            error && 'border-[#DC2626] focus:ring-[#DC2626]',
+            Icon && 'pl-10',
+            className
+          )}
           {...props}
         />
       </div>

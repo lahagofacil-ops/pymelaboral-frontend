@@ -1,20 +1,15 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
-import { useEmpresa } from '../hooks/useEmpresa'
-import Spinner from './ui/Spinner'
-import { ROLES } from '../lib/constants'
+import { useAuth } from '../context/AuthContext'
+import { Loader2 } from 'lucide-react'
 
-export default function ProtectedRoute({
-  allowedRoles = [],
-  requireImpersonation = false,
-}) {
-  const { user, loading, isAuthenticated } = useAuth()
-  const { isImpersonating } = useEmpresa()
+export default function ProtectedRoute({ allowedRoles }) {
+  const { isAuthenticated, loading, role } = useAuth()
 
+  // CRITICAL: Show spinner while auth is loading, do NOT redirect
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <Spinner size="lg" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2563EB]" />
       </div>
     )
   }
@@ -23,36 +18,15 @@ export default function ProtectedRoute({
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles.length > 0) {
-    const hasRole = allowedRoles.includes(user?.role)
-
-    const canImpersonate =
-      (user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.SUPERVISOR) &&
-      requireImpersonation &&
-      isImpersonating
-
-    if (!hasRole && !canImpersonate) {
-      return (
-        <div className="flex flex-col items-center justify-center h-screen bg-white">
-          <h1 className="text-2xl font-bold text-[#111827] mb-2">403</h1>
-          <p className="text-[#6B7280]">No tienes permisos para acceder a esta página.</p>
-          <a href="/" className="mt-4 text-sm text-[#2563EB] hover:underline">
-            Volver al inicio
-          </a>
-        </div>
-      )
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    const homeMap = {
+      SUPER_ADMIN: '/admin',
+      SUPERVISOR: '/supervisor',
+      OWNER: '/empresa',
+      ADMIN: '/empresa',
+      WORKER: '/portal',
     }
-  }
-
-  if (requireImpersonation) {
-    const needsImpersonation =
-      user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.SUPERVISOR
-
-    if (needsImpersonation && !isImpersonating) {
-      const redirectPath =
-        user?.role === ROLES.SUPER_ADMIN ? '/admin' : '/supervisor'
-      return <Navigate to={redirectPath} replace />
-    }
+    return <Navigate to={homeMap[role] || '/'} replace />
   }
 
   return <Outlet />

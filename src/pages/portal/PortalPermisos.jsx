@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Check } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatDate } from '../../lib/utils'
 import Table from '../../components/ui/Table'
@@ -20,25 +20,24 @@ const TIPOS_PERMISO = [
   { value: 'OTRO', label: 'Otro' },
 ]
 
-export default function PermisosPage() {
+export default function PortalPermisos() {
   const [permisos, setPermisos] = useState([])
-  const [trabajadores, setTrabajadores] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({
-    trabajadorId: '', tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '',
+    tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '',
   })
   const [saving, setSaving] = useState(false)
 
-  const fetchData = useCallback(async () => {
+  const fetchPermisos = useCallback(async () => {
     try {
-      const [pRes, tRes] = await Promise.all([
-        apiClient.get('/api/permisos'),
-        apiClient.get('/api/trabajadores'),
-      ])
-      if (pRes.success) setPermisos(pRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
+      const res = await apiClient.get('/api/permisos')
+      if (res.success) {
+        setPermisos(res.data)
+      } else {
+        setError(res.error || 'Error al cargar permisos')
+      }
     } catch {
       setError('Error de conexion')
     } finally {
@@ -47,10 +46,10 @@ export default function PermisosPage() {
   }, [])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchPermisos()
+  }, [fetchPermisos])
 
-  const handleSave = async () => {
+  const handleSolicitar = async () => {
     setSaving(true)
     setError('')
     try {
@@ -60,7 +59,8 @@ export default function PermisosPage() {
       })
       if (res.success) {
         setModalOpen(false)
-        await fetchData()
+        setForm({ tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '' })
+        await fetchPermisos()
       } else {
         setError(res.error || 'Error al solicitar')
       }
@@ -71,27 +71,12 @@ export default function PermisosPage() {
     }
   }
 
-  const handleAprobar = async (id) => {
-    try {
-      const res = await apiClient.put(`/api/permisos/${id}/aprobar`)
-      if (res.success) await fetchData()
-      else setError(res.error || 'Error al aprobar')
-    } catch {
-      setError('Error de conexion')
-    }
-  }
-
   const estadoBadge = (estado) => {
     const map = { APROBADO: 'success', PENDIENTE: 'warning', RECHAZADO: 'danger' }
     return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
   }
 
   const columns = [
-    {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
-    },
     {
       key: 'tipo',
       label: 'Tipo',
@@ -102,32 +87,17 @@ export default function PermisosPage() {
     {
       key: 'conGoce',
       label: 'Con goce',
-      render: (val) => (
-        <Badge variant={val ? 'success' : 'neutral'}>{val ? 'Si' : 'No'}</Badge>
-      ),
+      render: (val) => <Badge variant={val ? 'success' : 'neutral'}>{val ? 'Si' : 'No'}</Badge>,
     },
     { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
-    {
-      key: 'actions',
-      label: '',
-      render: (_, row) => row.estado === 'PENDIENTE' ? (
-        <button
-          onClick={() => handleAprobar(row.id)}
-          className="p-1.5 rounded-lg text-[#059669] hover:bg-green-50 transition-colors"
-          title="Aprobar"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-      ) : null,
-    },
   ]
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#111827]">Permisos</h1>
+        <h1 className="text-2xl font-bold text-[#111827]">Mis Permisos</h1>
         <Button onClick={() => {
-          setForm({ trabajadorId: '', tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '' })
+          setForm({ tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '' })
           setModalOpen(true)
         }}>
           <Plus className="w-4 h-4" />
@@ -137,7 +107,7 @@ export default function PermisosPage() {
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      <Table columns={columns} data={permisos} loading={loading} emptyMessage="No hay permisos" />
+      <Table columns={columns} data={permisos} loading={loading} emptyMessage="No tienes permisos" />
 
       <Modal
         open={modalOpen}
@@ -146,17 +116,11 @@ export default function PermisosPage() {
         footer={
           <>
             <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>Solicitar</Button>
+            <Button onClick={handleSolicitar} loading={saving}>Solicitar</Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Select
-            label="Trabajador"
-            value={form.trabajadorId}
-            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
-            options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
-          />
           <Select
             label="Tipo de permiso"
             value={form.tipo}

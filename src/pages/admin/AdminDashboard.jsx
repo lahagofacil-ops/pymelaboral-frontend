@@ -1,114 +1,84 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Users, Briefcase, MessageSquare, Plus } from 'lucide-react'
-import { get } from '../../api/client'
+import { apiClient } from '../../api/client'
 import StatCard from '../../components/ui/StatCard'
-import Table from '../../components/ui/Table'
-import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Spinner from '../../components/ui/Spinner'
 import Alert from '../../components/ui/Alert'
-import { formatRut } from '../../lib/formatters'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
-  const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStats = async () => {
       try {
-        const [statsRes, empresasRes] = await Promise.all([
-          get('/api/admin/stats'),
-          get('/api/admin/empresas?limit=10'),
-        ])
-        if (statsRes.success) setStats(statsRes.data)
-        if (empresasRes.success) setEmpresas(empresasRes.data.empresas || [])
-      } catch (err) {
-        setError(err.message || 'Error al cargar datos')
+        const res = await apiClient.get('/api/admin/stats')
+        if (res.success) {
+          setStats(res.data)
+        } else {
+          setError(res.error || 'Error al cargar estadisticas')
+        }
+      } catch {
+        setError('Error de conexion')
       } finally {
         setLoading(false)
       }
     }
-    fetchData()
+    fetchStats()
   }, [])
 
-  const columns = [
-    { key: 'razonSocial', label: 'Razón Social' },
-    {
-      key: 'rut',
-      label: 'RUT',
-      render: (val) => formatRut(val),
-    },
-    {
-      key: 'plan',
-      label: 'Plan',
-      render: (val) => <Badge variant="info">{val}</Badge>,
-    },
-    {
-      key: 'activo',
-      label: 'Estado',
-      render: (val) => (
-        <Badge variant={val ? 'success' : 'neutral'}>
-          {val ? 'Activo' : 'Inactivo'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'trabajadoresCount',
-      label: 'Trabajadores',
-      render: (val) => val || 0,
-    },
-  ]
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-[#111827]">Dashboard</h1>
-          <p className="text-sm text-[#6B7280]">Resumen general de la plataforma</p>
-        </div>
-        <Button onClick={() => navigate('/admin/empresas')}>
-          <Plus className="w-4 h-4" />
-          Crear Empresa
-        </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-[#111827]">Panel de Administracion</h1>
       </div>
 
-      {error && <Alert type="error" message={error} className="mb-6" />}
+      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Building2}
-          label="Total Empresas"
-          value={loading ? '...' : stats?.empresas ?? 0}
+          label="Total empresas"
+          value={stats?.totalEmpresas ?? 0}
         />
         <StatCard
           icon={Users}
-          label="Total Usuarios"
-          value={loading ? '...' : stats?.usuarios ?? 0}
+          label="Total usuarios"
+          value={stats?.totalUsers ?? 0}
         />
         <StatCard
           icon={Briefcase}
-          label="Total Trabajadores"
-          value={loading ? '...' : stats?.trabajadores ?? 0}
+          label="Total trabajadores"
+          value={stats?.totalTrabajadores ?? 0}
         />
         <StatCard
           icon={MessageSquare}
-          label="Consultas Chat Hoy"
-          value={loading ? '...' : stats?.chatHoy ?? 0}
+          label="Mensajes chat hoy"
+          value={stats?.chatMessagesToday ?? 0}
         />
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-[#111827] mb-4">Empresas Recientes</h2>
-        <Table
-          columns={columns}
-          data={empresas}
-          loading={loading}
-          emptyTitle="Sin empresas"
-          emptyDescription="No hay empresas registradas aún."
-        />
+      <div className="flex items-center gap-3">
+        <Button onClick={() => navigate('/admin/empresas')}>
+          <Plus className="w-4 h-4" />
+          Nueva empresa
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/admin/supervisoras')}>
+          <Plus className="w-4 h-4" />
+          Nueva supervisora
+        </Button>
       </div>
     </div>
   )
