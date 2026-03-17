@@ -6,7 +6,7 @@ export const Select = forwardRef(({ label, error, options = [], placeholder, cla
       {label && <label className="block text-xs font-medium text-gray-700">{label}</label>}
       <select
         ref={ref}
-        className={`h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition-colors focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20 disabled:bg-gray-50 ${error ? 'border-red-500' : ''} ${className}`}
+        className={`h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm transition-colors focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 disabled:bg-gray-50 ${error ? 'border-red-500' : ''} ${className}`}
         {...props}
       >
         {placeholder && <option value="">{placeholder}</option>}

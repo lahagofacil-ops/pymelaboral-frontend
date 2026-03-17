@@ -1,4 +1,4 @@
-export function StatCard({ title, value, subtitle, icon: Icon, iconColor = 'text-[#1F4E79]' }) {
+export function StatCard({ title, value, subtitle, icon: Icon, iconColor = 'text-[#2563EB]' }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between">

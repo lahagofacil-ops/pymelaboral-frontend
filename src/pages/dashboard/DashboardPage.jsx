@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import SuperAdminDashboard from './SuperAdminDashboard';
+import SupervisorDashboard from './SupervisorDashboard';
 import { formatCLP, formatFecha } from '../../lib/format';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { AlertCard } from '../../components/dashboard/AlertCard';
@@ -34,13 +36,13 @@ function WorkerDashboard() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F4E79]">Bienvenido, {user?.nombre || 'Usuario'}</h1>
+          <h1 className="text-2xl font-bold text-[#2563EB]">Bienvenido, {user?.nombre || 'Usuario'}</h1>
           <p className="text-gray-500">Tu cuenta aun no esta vinculada a un trabajador</p>
         </div>
         <Card className="border-dashed border-2 border-gray-300">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Users className="mb-4 h-16 w-16 text-gray-300" />
-            <h2 className="mb-2 text-xl font-bold text-[#1F4E79]">Sin vinculacion</h2>
+            <h2 className="mb-2 text-xl font-bold text-[#2563EB]">Sin vinculacion</h2>
             <p className="max-w-md text-gray-500">Contacta al administrador de tu empresa para vincular tu cuenta.</p>
           </CardContent>
         </Card>
@@ -51,12 +53,12 @@ function WorkerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1F4E79]">Hola, {data.trabajador.nombre}</h1>
+        <h1 className="text-2xl font-bold text-[#2563EB]">Hola, {data.trabajador.nombre}</h1>
         <p className="text-gray-500">{data.trabajador.cargo} · Desde el {formatFecha(data.trabajador.fechaIngreso)}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Ultimo sueldo liquido" value={data.ultimaLiquidacion ? formatCLP(data.ultimaLiquidacion.liquido) : '—'} subtitle={data.ultimaLiquidacion?.periodo || 'Sin liquidaciones'} icon={DollarSign} iconColor="text-[#0F6E56]" />
+        <StatCard title="Ultimo sueldo liquido" value={data.ultimaLiquidacion ? formatCLP(data.ultimaLiquidacion.liquido) : '—'} subtitle={data.ultimaLiquidacion?.periodo || 'Sin liquidaciones'} icon={DollarSign} iconColor="text-[#059669]" />
         <StatCard title="Vacaciones pendientes" value={data.vacaciones.esProporcional ? `${Math.round(data.vacaciones.diasProporcionales)} dias` : `${data.vacaciones.diasPendientes} dias`} subtitle={`De ${data.vacaciones.diasTotalesAnuales} anuales`} icon={Umbrella} />
         <StatCard title="Dias trabajados (mes)" value={String(data.asistenciaMes.diasTrabajados)} subtitle={data.asistenciaMes.horasExtra > 0 ? `${data.asistenciaMes.horasExtra} hrs extra` : 'Sin horas extra'} icon={CalendarDays} />
         <StatCard title="Sueldo base" value={formatCLP(data.trabajador.sueldoBase)} icon={Briefcase} />
@@ -79,10 +81,10 @@ function WorkerDashboard() {
           <CardHeader><CardTitle className="text-base">Acciones rapidas</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {[
-              { href: '/asistencia', icon: CalendarDays, color: 'text-[#1F4E79]', title: 'Marcar asistencia', sub: 'Registra tu entrada/salida' },
-              { href: '/vacaciones', icon: Umbrella, color: 'text-[#0F6E56]', title: 'Solicitar vacaciones', sub: 'Revisa tu saldo y solicita dias' },
-              { href: '/liquidaciones', icon: DollarSign, color: 'text-[#0F6E56]', title: 'Mis liquidaciones', sub: 'Historial de remuneraciones' },
-              { href: '/contratos', icon: FileText, color: 'text-[#1F4E79]', title: 'Mi contrato', sub: 'Ver detalles de tu contrato' },
+              { href: '/asistencia', icon: CalendarDays, color: 'text-[#2563EB]', title: 'Marcar asistencia', sub: 'Registra tu entrada/salida' },
+              { href: '/vacaciones', icon: Umbrella, color: 'text-[#059669]', title: 'Solicitar vacaciones', sub: 'Revisa tu saldo y solicita dias' },
+              { href: '/liquidaciones', icon: DollarSign, color: 'text-[#059669]', title: 'Mis liquidaciones', sub: 'Historial de remuneraciones' },
+              { href: '/contratos', icon: FileText, color: 'text-[#2563EB]', title: 'Mi contrato', sub: 'Ver detalles de tu contrato' },
             ].map(a => (
               <Link key={a.href} to={a.href}>
                 <Button variant="outline" className="flex h-auto w-full items-center justify-start gap-3 p-4">
@@ -152,13 +154,13 @@ function AdminDashboard() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1F4E79]">Bienvenido, {user?.nombre || 'Usuario'}</h1>
+          <h1 className="text-2xl font-bold text-[#2563EB]">Bienvenido, {user?.nombre || 'Usuario'}</h1>
           <p className="text-gray-500">Comienza configurando tu empresa</p>
         </div>
-        <Card className="border-dashed border-2 border-[#0F6E56]/30">
+        <Card className="border-dashed border-2 border-[#059669]/30">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <UserPlus className="mb-4 h-16 w-16 text-[#0F6E56]/50" />
-            <h2 className="mb-2 text-xl font-bold text-[#1F4E79]">Agrega tu primer trabajador</h2>
+            <UserPlus className="mb-4 h-16 w-16 text-[#059669]/50" />
+            <h2 className="mb-2 text-xl font-bold text-[#2563EB]">Agrega tu primer trabajador</h2>
             <p className="mb-6 max-w-md text-gray-500">Registra a tus empleados para comenzar a crear contratos, calcular liquidaciones y gestionar cumplimiento legal.</p>
             <Link to="/trabajadores/nuevo">
               <Button variant="secondary"><Plus className="mr-2 h-4 w-4" /> Agregar Trabajador</Button>
@@ -173,7 +175,7 @@ function AdminDashboard() {
           ].map(step => (
             <Card key={step.n} className="text-center">
               <CardContent className="py-6">
-                <div className="mb-3 text-3xl font-bold text-[#1F4E79]">{step.n}</div>
+                <div className="mb-3 text-3xl font-bold text-[#2563EB]">{step.n}</div>
                 <p className="font-medium">{step.t}</p>
                 <p className="text-xs text-gray-400">{step.s}</p>
               </CardContent>
@@ -187,7 +189,7 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1F4E79]">Bienvenido, {user?.nombre || 'Usuario'}</h1>
+        <h1 className="text-2xl font-bold text-[#2563EB]">Bienvenido, {user?.nombre || 'Usuario'}</h1>
         <p className="text-gray-500">Resumen de tu empresa al {new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
 
@@ -200,7 +202,7 @@ function AdminDashboard() {
       {data && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Trabajadores activos" value={String(data.stats.trabajadoresActivos)} icon={Users} />
-          <StatCard title="Costo nomina mes" value={formatCLP(data.stats.costoNominaMes)} subtitle={new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })} icon={DollarSign} iconColor="text-[#0F6E56]" />
+          <StatCard title="Costo nomina mes" value={formatCLP(data.stats.costoNominaMes)} subtitle={new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })} icon={DollarSign} iconColor="text-[#059669]" />
           <StatCard title="Cotizaciones pendientes" value={String(data.stats.cotizacionesPendientes)} icon={Building2} />
           <StatCard title="Contratos vigentes" value={String(data.stats.contratosVigentes)} icon={FileText} />
         </div>
@@ -271,10 +273,10 @@ function AdminDashboard() {
           <CardHeader><CardTitle className="text-base">Acciones rapidas</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {[
-              { href: '/trabajadores/nuevo', icon: Plus, color: 'text-[#0F6E56]', title: 'Nuevo trabajador', sub: 'Agregar un empleado' },
-              { href: '/contratos/nuevo', icon: FileText, color: 'text-[#1F4E79]', title: 'Nuevo contrato', sub: 'Crear contrato de trabajo' },
-              { href: '/liquidaciones/nueva', icon: DollarSign, color: 'text-[#0F6E56]', title: 'Nueva liquidacion', sub: 'Calcular remuneracion mensual' },
-              { href: '/compliance', icon: ArrowRight, color: 'text-[#1F4E79]', title: 'Ver compliance', sub: 'Estado de cumplimiento legal' },
+              { href: '/trabajadores/nuevo', icon: Plus, color: 'text-[#059669]', title: 'Nuevo trabajador', sub: 'Agregar un empleado' },
+              { href: '/contratos/nuevo', icon: FileText, color: 'text-[#2563EB]', title: 'Nuevo contrato', sub: 'Crear contrato de trabajo' },
+              { href: '/liquidaciones/nueva', icon: DollarSign, color: 'text-[#059669]', title: 'Nueva liquidacion', sub: 'Calcular remuneracion mensual' },
+              { href: '/compliance', icon: ArrowRight, color: 'text-[#2563EB]', title: 'Ver compliance', sub: 'Estado de cumplimiento legal' },
             ].map(a => (
               <Link key={a.href} to={a.href}>
                 <Button variant="outline" className="flex h-auto w-full items-center justify-start gap-3 p-4">
@@ -295,5 +297,9 @@ function AdminDashboard() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  return user?.role === 'WORKER' ? <WorkerDashboard /> : <AdminDashboard />;
+
+  if (user?.role === 'SUPER_ADMIN') return <SuperAdminDashboard />;
+  if (user?.role === 'SUPERVISOR') return <SupervisorDashboard />;
+  if (user?.role === 'WORKER') return <WorkerDashboard />;
+  return <AdminDashboard />;
 }

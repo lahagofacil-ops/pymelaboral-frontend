@@ -62,7 +62,7 @@ export function Header({ onMenuToggle }) {
         {/* User menu */}
         <div className="relative" ref={userRef}>
           <button onClick={() => setShowUser(!showUser)} className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-gray-50">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F4E79] text-xs font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB] text-xs font-bold text-white">
               {initials}
             </div>
             <ChevronDown className="h-4 w-4 text-gray-400" />

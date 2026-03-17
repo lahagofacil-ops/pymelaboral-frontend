@@ -13,7 +13,7 @@ export function Tabs({ tabs, defaultTab, className = '' }) {
             onClick={() => setActive(tab.key)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               active === tab.key
-                ? 'border-[#1F4E79] text-[#1F4E79]'
+                ? 'border-[#2563EB] text-[#2563EB]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >

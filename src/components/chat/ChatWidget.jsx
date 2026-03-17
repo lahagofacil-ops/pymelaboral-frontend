@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 export function ChatWidget() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -10,6 +12,8 @@ export function ChatWidget() {
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  if (!user) return null;
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -33,7 +37,7 @@ export function ChatWidget() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#1F4E79] text-white shadow-lg hover:bg-[#1a4268] transition-transform hover:scale-105"
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#2563EB] text-white shadow-lg hover:bg-[#1E40AF] transition-transform hover:scale-105"
       >
         <MessageCircle className="h-6 w-6" />
       </button>
@@ -43,7 +47,7 @@ export function ChatWidget() {
   return (
     <div className="fixed bottom-6 right-6 z-40 flex h-[500px] w-[380px] flex-col rounded-xl border border-gray-200 bg-white shadow-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between rounded-t-xl bg-[#1F4E79] px-4 py-3 text-white">
+      <div className="flex items-center justify-between rounded-t-xl bg-[#2563EB] px-4 py-3 text-white">
         <div>
           <p className="text-sm font-semibold">Asistente PymeLaboral</p>
           <p className="text-xs opacity-75">Experto en derecho laboral chileno</p>
@@ -64,7 +68,7 @@ export function ChatWidget() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-              msg.role === 'user' ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-800'
+              msg.role === 'user' ? 'bg-[#2563EB] text-white' : 'bg-gray-100 text-gray-800'
             }`}>
               <p className="whitespace-pre-wrap">{msg.content}</p>
             </div>
@@ -88,12 +92,12 @@ export function ChatWidget() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder="Escribe tu consulta..."
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1F4E79] focus:outline-none"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#2563EB] focus:outline-none"
           />
           <button
             onClick={send}
             disabled={!input.trim() || loading}
-            className="rounded-lg bg-[#1F4E79] px-3 py-2 text-white disabled:opacity-50 hover:bg-[#1a4268]"
+            className="rounded-lg bg-[#2563EB] px-3 py-2 text-white disabled:opacity-50 hover:bg-[#1E40AF]"
           >
             <Send className="h-4 w-4" />
           </button>

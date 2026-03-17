@@ -1,5 +1,5 @@
 const variants = {
-  default: 'bg-[#1F4E79] text-white',
+  default: 'bg-[#2563EB] text-white',
   secondary: 'bg-gray-100 text-gray-800',
   success: 'bg-green-100 text-green-800',
   warning: 'bg-yellow-100 text-yellow-800',

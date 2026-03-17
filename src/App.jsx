@@ -3,7 +3,8 @@ import { AuthProvider } from './context/AuthContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ChatWidget } from './components/chat/ChatWidget';
 
-// Auth pages
+// Public pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 
@@ -33,6 +34,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           {/* Public */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
 
@@ -58,9 +60,8 @@ export default function App() {
             <Route path="/planes" element={<PlanesPage />} />
           </Route>
 
-          {/* Redirects */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <ChatWidget />
       </AuthProvider>

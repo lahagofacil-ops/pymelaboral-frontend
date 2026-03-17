@@ -16,8 +16,8 @@ export function MobileNav({ open, onClose }) {
       <div className="fixed left-0 top-0 z-50 h-full w-72 bg-white shadow-xl">
         <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F4E79] text-xs font-bold text-white">PL</div>
-            <span className="text-sm font-bold text-[#1F4E79]">PymeLaboral</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB] text-xs font-bold text-white">PL</div>
+            <span className="text-sm font-bold text-[#2563EB]">PymeLaboral</span>
           </div>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100">
             <X className="h-5 w-5" />
@@ -33,7 +33,7 @@ export function MobileNav({ open, onClose }) {
                   <Link
                     to={item.href}
                     onClick={onClose}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${isActive ? 'bg-[#1F4E79]/10 text-[#1F4E79]' : 'text-gray-600 hover:bg-gray-100'}`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${isActive ? 'bg-[#2563EB]/10 text-[#2563EB]' : 'text-gray-600 hover:bg-gray-100'}`}
                   >
                     <Icon className="h-5 w-5" />
                     <span>{item.label}</span>

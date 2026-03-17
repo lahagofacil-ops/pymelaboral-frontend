@@ -23,7 +23,7 @@ export const CLPInput = forwardRef(({ label, error, value, onChange, ...props },
           type="text"
           value={display}
           onChange={handleChange}
-          className={`h-9 w-full rounded-lg border border-gray-300 bg-white pl-7 pr-3 text-sm focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20 ${error ? 'border-red-500' : ''}`}
+          className={`h-9 w-full rounded-lg border border-gray-300 bg-white pl-7 pr-3 text-sm focus:border-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${error ? 'border-red-500' : ''}`}
           {...props}
         />
       </div>

@@ -16,10 +16,10 @@ export function Sidebar() {
     <aside className={`fixed left-0 top-0 z-30 flex h-full flex-col border-r border-gray-200 bg-white transition-all duration-200 ${collapsed ? 'w-16' : 'w-64'}`}>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1F4E79] text-xs font-bold text-white">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#2563EB] text-xs font-bold text-white">
           PL
         </div>
-        {!collapsed && <span className="text-sm font-bold text-[#1F4E79]">PymeLaboral</span>}
+        {!collapsed && <span className="text-sm font-bold text-[#2563EB]">PymeLaboral</span>}
       </div>
 
       {/* Nav */}
@@ -36,7 +36,7 @@ export function Sidebar() {
                   to={item.href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-[#1F4E79]/10 text-[#1F4E79]'
+                      ? 'bg-[#2563EB]/10 text-[#2563EB]'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                   title={collapsed ? item.label : undefined}

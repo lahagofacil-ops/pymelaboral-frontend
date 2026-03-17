@@ -4,11 +4,11 @@ export function EmptyState({ icon: Icon, title, description, actionLabel, onActi
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 py-12 text-center">
       {Icon && (
-        <div className="mb-4 rounded-full bg-[#1F4E79]/10 p-4">
-          <Icon className="h-8 w-8 text-[#1F4E79]" />
+        <div className="mb-4 rounded-full bg-[#2563EB]/10 p-4">
+          <Icon className="h-8 w-8 text-[#2563EB]" />
         </div>
       )}
-      <h3 className="mb-1 text-lg font-semibold text-[#1F4E79]">{title}</h3>
+      <h3 className="mb-1 text-lg font-semibold text-[#2563EB]">{title}</h3>
       {description && <p className="mb-4 max-w-md text-sm text-gray-500">{description}</p>}
       {actionLabel && (
         actionHref ? (
