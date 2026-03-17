@@ -1,74 +1,73 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
+import { createContext, useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { get, post } from '../api/client'
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const navigate = useNavigate()
 
-  const checkAuth = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) { setLoading(false); return; }
+  const refreshUser = useCallback(async () => {
     try {
-      const res = await api.get('/api/auth/me');
-      if (res.success) {
-        setUser(res.data);
-        localStorage.setItem('user', JSON.stringify(res.data));
+      const result = await get('/api/auth/me')
+      if (result.success && result.data) {
+        setUser(result.data)
+        setIsAuthenticated(true)
+      } else {
+        setUser(null)
+        setIsAuthenticated(false)
       }
     } catch {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      setUser(null);
-    } finally {
-      setLoading(false);
+      setUser(null)
+      setIsAuthenticated(false)
     }
-  }, []);
+  }, [])
 
-  useEffect(() => { checkAuth(); }, [checkAuth]);
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = sessionStorage.getItem('accessToken')
+      if (token) {
+        await refreshUser()
+      }
+      setLoading(false)
+    }
+    initAuth()
+  }, [refreshUser])
 
   const login = async (email, password) => {
-    const res = await api.post('/api/auth/login', { email, password });
-    if (res.success) {
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('refreshToken', res.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
+    const result = await post('/api/auth/login', { email, password })
+    if (result.success && result.data) {
+      sessionStorage.setItem('accessToken', result.data.accessToken)
+      sessionStorage.setItem('refreshToken', result.data.refreshToken)
+      setUser(result.data.user)
+      setIsAuthenticated(true)
+      return result.data
     }
-    return res;
-  };
+    throw new Error(result.error || 'Error al iniciar sesión')
+  }
 
-  const register = async (data) => {
-    const res = await api.post('/api/auth/register', data);
-    if (res.success) {
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('refreshToken', res.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-    }
-    return res;
-  };
+  const logout = useCallback(() => {
+    sessionStorage.clear()
+    setUser(null)
+    setIsAuthenticated(false)
+    navigate('/login')
+  }, [navigate])
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    setUser(null);
-  };
+  const value = {
+    user,
+    loading,
+    isAuthenticated,
+    login,
+    logout,
+    refreshUser,
+  }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkAuth }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  )
 }

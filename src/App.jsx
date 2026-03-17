@@ -1,70 +1,99 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { DashboardLayout } from './components/layout/DashboardLayout';
-import { ChatWidget } from './components/chat/ChatWidget';
+import { Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute'
+import AdminLayout from './layouts/AdminLayout'
+import SupervisorLayout from './layouts/SupervisorLayout'
+import EmpresaLayout from './layouts/EmpresaLayout'
+import PortalLayout from './layouts/PortalLayout'
 
 // Public pages
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
+import LandingPage from './pages/public/LandingPage'
+import LoginPage from './pages/public/LoginPage'
 
-// Dashboard pages
-import DashboardPage from './pages/dashboard/DashboardPage';
-import TrabajadoresPage from './pages/trabajadores/TrabajadoresPage';
-import TrabajadorNuevoPage from './pages/trabajadores/TrabajadorNuevoPage';
-import TrabajadorDetallePage from './pages/trabajadores/TrabajadorDetallePage';
-import ContratosPage from './pages/contratos/ContratosPage';
-import ContratoNuevoPage from './pages/contratos/ContratoNuevoPage';
-import LiquidacionesPage from './pages/liquidaciones/LiquidacionesPage';
-import LiquidacionNuevaPage from './pages/liquidaciones/LiquidacionNuevaPage';
-import LiquidacionDetallePage from './pages/liquidaciones/LiquidacionDetallePage';
-import CotizacionesPage from './pages/cotizaciones/CotizacionesPage';
-import AsistenciaPage from './pages/asistencia/AsistenciaPage';
-import VacacionesPage from './pages/vacaciones/VacacionesPage';
-import FiniquitosPage from './pages/finiquitos/FiniquitosPage';
-import LeyKarinPage from './pages/ley-karin/LeyKarinPage';
-import CompliancePage from './pages/compliance/CompliancePage';
-import DocumentosPage from './pages/documentos/DocumentosPage';
-import ConfiguracionPage from './pages/configuracion/ConfiguracionPage';
-import PlanesPage from './pages/planes/PlanesPage';
+// Admin pages
+import AdminDashboard from './pages/admin/AdminDashboard'
+import EmpresasPage from './pages/admin/EmpresasPage'
+import SupervisorasPage from './pages/admin/SupervisorasPage'
+
+// Supervisor pages
+import SupervisorDashboard from './pages/supervisor/SupervisorDashboard'
+
+// Empresa pages
+import Dashboard from './pages/empresa/Dashboard'
+import TrabajadoresPage from './pages/empresa/TrabajadoresPage'
+import ContratosPage from './pages/empresa/ContratosPage'
+import LiquidacionesPage from './pages/empresa/LiquidacionesPage'
+import CotizacionesPage from './pages/empresa/CotizacionesPage'
+import AsistenciaPage from './pages/empresa/AsistenciaPage'
+import VacacionesPage from './pages/empresa/VacacionesPage'
+import PermisosPage from './pages/empresa/PermisosPage'
+import FiniquitosPage from './pages/empresa/FiniquitosPage'
+import KarinPage from './pages/empresa/KarinPage'
+import DocumentosPage from './pages/empresa/DocumentosPage'
+import CompliancePage from './pages/empresa/CompliancePage'
+import ConfiguracionPage from './pages/empresa/ConfiguracionPage'
+
+// Portal pages
+import PortalDashboard from './pages/portal/PortalDashboard'
+import MisLiquidaciones from './pages/portal/MisLiquidaciones'
+import MiContrato from './pages/portal/MiContrato'
+import MisVacaciones from './pages/portal/MisVacaciones'
+import MiAsistencia from './pages/portal/MiAsistencia'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/registro" element={<RegisterPage />} />
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected - Dashboard layout */}
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/trabajadores" element={<TrabajadoresPage />} />
-            <Route path="/trabajadores/nuevo" element={<TrabajadorNuevoPage />} />
-            <Route path="/trabajadores/:id" element={<TrabajadorDetallePage />} />
-            <Route path="/contratos" element={<ContratosPage />} />
-            <Route path="/contratos/nuevo" element={<ContratoNuevoPage />} />
-            <Route path="/liquidaciones" element={<LiquidacionesPage />} />
-            <Route path="/liquidaciones/nueva" element={<LiquidacionNuevaPage />} />
-            <Route path="/liquidaciones/:id" element={<LiquidacionDetallePage />} />
-            <Route path="/cotizaciones" element={<CotizacionesPage />} />
-            <Route path="/asistencia" element={<AsistenciaPage />} />
-            <Route path="/vacaciones" element={<VacacionesPage />} />
-            <Route path="/finiquitos" element={<FiniquitosPage />} />
-            <Route path="/ley-karin" element={<LeyKarinPage />} />
-            <Route path="/compliance" element={<CompliancePage />} />
-            <Route path="/documentos" element={<DocumentosPage />} />
-            <Route path="/configuracion" element={<ConfiguracionPage />} />
-            <Route path="/planes" element={<PlanesPage />} />
-          </Route>
+      {/* Admin routes - SUPER_ADMIN only */}
+      <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/empresas" element={<EmpresasPage />} />
+          <Route path="/admin/supervisoras" element={<SupervisorasPage />} />
+        </Route>
+      </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <ChatWidget />
-      </AuthProvider>
-    </BrowserRouter>
-  );
+      {/* Supervisor routes - SUPERVISOR only */}
+      <Route element={<ProtectedRoute allowedRoles={['SUPERVISOR']} />}>
+        <Route element={<SupervisorLayout />}>
+          <Route path="/supervisor" element={<SupervisorDashboard />} />
+        </Route>
+      </Route>
+
+      {/* Empresa routes - OWNER, ADMIN, or impersonating */}
+      <Route element={<ProtectedRoute allowedRoles={['OWNER', 'ADMIN']} requireImpersonation />}>
+        <Route element={<EmpresaLayout />}>
+          <Route path="/empresa/dashboard" element={<Dashboard />} />
+          <Route path="/empresa/trabajadores" element={<TrabajadoresPage />} />
+          <Route path="/empresa/contratos" element={<ContratosPage />} />
+          <Route path="/empresa/liquidaciones" element={<LiquidacionesPage />} />
+          <Route path="/empresa/cotizaciones" element={<CotizacionesPage />} />
+          <Route path="/empresa/asistencia" element={<AsistenciaPage />} />
+          <Route path="/empresa/vacaciones" element={<VacacionesPage />} />
+          <Route path="/empresa/permisos" element={<PermisosPage />} />
+          <Route path="/empresa/finiquitos" element={<FiniquitosPage />} />
+          <Route path="/empresa/karin" element={<KarinPage />} />
+          <Route path="/empresa/documentos" element={<DocumentosPage />} />
+          <Route path="/empresa/compliance" element={<CompliancePage />} />
+          <Route path="/empresa/configuracion" element={<ConfiguracionPage />} />
+        </Route>
+      </Route>
+
+      {/* Portal routes - WORKER only */}
+      <Route element={<ProtectedRoute allowedRoles={['WORKER']} />}>
+        <Route element={<PortalLayout />}>
+          <Route path="/portal" element={<PortalDashboard />} />
+          <Route path="/portal/liquidaciones" element={<MisLiquidaciones />} />
+          <Route path="/portal/contrato" element={<MiContrato />} />
+          <Route path="/portal/vacaciones" element={<MisVacaciones />} />
+          <Route path="/portal/asistencia" element={<MiAsistencia />} />
+        </Route>
+      </Route>
+
+      {/* Catch-all redirect */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }

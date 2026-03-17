@@ -1,16 +1,21 @@
-const variants = {
-  default: 'bg-[#2563EB] text-white',
-  secondary: 'bg-gray-100 text-gray-800',
-  success: 'bg-green-100 text-green-800',
-  warning: 'bg-yellow-100 text-yellow-800',
-  destructive: 'bg-red-100 text-red-800',
-  outline: 'border border-gray-300 text-gray-700',
-};
+const colorClasses = {
+  success: 'bg-green-50 text-[#059669] border-green-200',
+  warning: 'bg-yellow-50 text-[#D97706] border-yellow-200',
+  danger: 'bg-red-50 text-[#DC2626] border-red-200',
+  info: 'bg-blue-50 text-[#2563EB] border-blue-200',
+  neutral: 'bg-gray-50 text-[#6B7280] border-gray-200',
+}
 
-export function Badge({ variant = 'default', className = '', children }) {
+export default function Badge({ children, variant = 'neutral', className = '' }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${variants[variant]} ${className}`}>
+    <span
+      className={`
+        inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
+        ${colorClasses[variant] || colorClasses.neutral}
+        ${className}
+      `}
+    >
       {children}
     </span>
-  );
+  )
 }

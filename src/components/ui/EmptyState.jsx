@@ -1,22 +1,25 @@
-import { Button } from './Button';
+import { Inbox } from 'lucide-react'
+import Button from './Button'
 
-export function EmptyState({ icon: Icon, title, description, actionLabel, onAction, actionHref }) {
+export default function EmptyState({
+  icon: Icon = Inbox,
+  title = 'Sin datos',
+  description = '',
+  actionLabel,
+  onAction,
+}) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 py-12 text-center">
-      {Icon && (
-        <div className="mb-4 rounded-full bg-[#2563EB]/10 p-4">
-          <Icon className="h-8 w-8 text-[#2563EB]" />
-        </div>
+    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+      <Icon className="w-12 h-12 text-[#E5E7EB] mb-4" />
+      <h3 className="text-base font-medium text-[#111827] mb-1">{title}</h3>
+      {description && (
+        <p className="text-sm text-[#6B7280] mb-4 max-w-sm">{description}</p>
       )}
-      <h3 className="mb-1 text-lg font-semibold text-[#2563EB]">{title}</h3>
-      {description && <p className="mb-4 max-w-md text-sm text-gray-500">{description}</p>}
-      {actionLabel && (
-        actionHref ? (
-          <a href={actionHref}><Button variant="secondary">{actionLabel}</Button></a>
-        ) : (
-          <Button variant="secondary" onClick={onAction}>{actionLabel}</Button>
-        )
+      {actionLabel && onAction && (
+        <Button onClick={onAction} size="sm">
+          {actionLabel}
+        </Button>
       )}
     </div>
-  );
+  )
 }

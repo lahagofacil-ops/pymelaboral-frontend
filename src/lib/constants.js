@@ -4,172 +4,138 @@ export const ROLES = {
   OWNER: 'OWNER',
   ADMIN: 'ADMIN',
   WORKER: 'WORKER',
-};
+}
 
-export const PLAN_LABELS = {
-  STARTER: 'Starter',
-  PROFESIONAL: 'Profesional',
-  BUSINESS: 'Business',
-};
+export const PLANS = {
+  FREE: { name: 'Gratuito', maxWorkers: 5 },
+  STARTER: { name: 'Starter', maxWorkers: 20 },
+  PRO: { name: 'Profesional', maxWorkers: 50 },
+  ENTERPRISE: { name: 'Empresa', maxWorkers: 999 },
+}
 
 export const AFP_OPTIONS = [
-  'CAPITAL',
-  'CUPRUM',
-  'HABITAT',
-  'MODELO',
-  'PLANVITAL',
-  'PROVIDA',
-  'UNO',
-];
+  { value: 'CAPITAL', label: 'AFP Capital' },
+  { value: 'CUPRUM', label: 'AFP Cuprum' },
+  { value: 'HABITAT', label: 'AFP Habitat' },
+  { value: 'MODELO', label: 'AFP Modelo' },
+  { value: 'PLANVITAL', label: 'AFP PlanVital' },
+  { value: 'PROVIDA', label: 'AFP ProVida' },
+  { value: 'UNO', label: 'AFP Uno' },
+]
 
 export const SALUD_OPTIONS = [
-  'FONASA',
-  'BANMEDICA',
-  'COLMENA',
-  'CONSALUD',
-  'CRUZ_BLANCA',
-  'NUEVA_MASVIDA',
-  'VIDA_TRES',
-];
+  { value: 'FONASA', label: 'Fonasa' },
+  { value: 'BANMEDICA', label: 'Banmédica' },
+  { value: 'COLMENA', label: 'Colmena Golden Cross' },
+  { value: 'CONSALUD', label: 'Consalud' },
+  { value: 'CRUZBLANCA', label: 'Cruz Blanca' },
+  { value: 'MASVIDA', label: 'Nueva Masvida' },
+  { value: 'VIDATRES', label: 'Vida Tres' },
+]
 
-export const ESTADO_TRABAJADOR = [
-  'ACTIVO',
-  'LICENCIA',
-  'VACACIONES',
-  'DESVINCULADO',
-];
+export const REGIONES_CHILE = [
+  'Arica y Parinacota',
+  'Tarapacá',
+  'Antofagasta',
+  'Atacama',
+  'Coquimbo',
+  'Valparaíso',
+  'Metropolitana de Santiago',
+  'O\'Higgins',
+  'Maule',
+  'Ñuble',
+  'Biobío',
+  'La Araucanía',
+  'Los Ríos',
+  'Los Lagos',
+  'Aysén',
+  'Magallanes y la Antártica Chilena',
+]
 
 export const TIPO_CONTRATO = [
-  'INDEFINIDO',
-  'PLAZO_FIJO',
-  'OBRA_FAENA',
-  'PART_TIME',
-];
+  { value: 'INDEFINIDO', label: 'Indefinido' },
+  { value: 'PLAZO_FIJO', label: 'Plazo Fijo' },
+  { value: 'POR_OBRA', label: 'Por Obra o Faena' },
+  { value: 'HONORARIOS', label: 'Honorarios' },
+]
 
-export const ESTADO_CONTRATO = [
-  'BORRADOR',
-  'VIGENTE',
-  'MODIFICADO',
-  'TERMINADO',
-];
+export const CAUSAL_TERMINO = [
+  { value: 'MUTUO_ACUERDO', label: 'Mutuo acuerdo (Art. 159 N°1)' },
+  { value: 'RENUNCIA', label: 'Renuncia del trabajador (Art. 159 N°2)' },
+  { value: 'MUERTE', label: 'Muerte del trabajador (Art. 159 N°3)' },
+  { value: 'VENCIMIENTO_PLAZO', label: 'Vencimiento del plazo (Art. 159 N°4)' },
+  { value: 'FIN_TRABAJO', label: 'Conclusión del trabajo (Art. 159 N°5)' },
+  { value: 'CASO_FORTUITO', label: 'Caso fortuito (Art. 159 N°6)' },
+  { value: 'CONDUCTA_INDEBIDA', label: 'Conducta indebida (Art. 160 N°1)' },
+  { value: 'NEGOCIACIONES_PROHIBIDAS', label: 'Negociaciones prohibidas (Art. 160 N°2)' },
+  { value: 'INASISTENCIA', label: 'Inasistencia injustificada (Art. 160 N°3)' },
+  { value: 'ABANDONO', label: 'Abandono del trabajo (Art. 160 N°4)' },
+  { value: 'ACTOS_IMPRUDENCIA', label: 'Actos de imprudencia (Art. 160 N°5)' },
+  { value: 'PERJUICIO_MATERIAL', label: 'Perjuicio material (Art. 160 N°6)' },
+  { value: 'INCUMPLIMIENTO_GRAVE', label: 'Incumplimiento grave (Art. 160 N°7)' },
+  { value: 'NECESIDADES_EMPRESA', label: 'Necesidades de la empresa (Art. 161)' },
+  { value: 'DESAHUCIO', label: 'Desahucio escrito del empleador (Art. 161 inc. 2)' },
+]
 
-export const CAUSAL_TERMINO = {
-  '161-1': 'Necesidades de la empresa',
-  '161-2': 'Desahucio escrito del empleador',
-  '159-1': 'Mutuo acuerdo',
-  '159-2': 'Renuncia del trabajador',
-  '159-3': 'Muerte del trabajador',
-  '159-4': 'Vencimiento del plazo',
-  '159-5': 'Conclusion del trabajo',
-  '159-6': 'Caso fortuito o fuerza mayor',
-  '160-1': 'Conductas indebidas de caracter grave',
-  '160-2': 'Negociaciones incompatibles',
-  '160-3': 'Inasistencia injustificada',
-  '160-4': 'Abandono del trabajo',
-  '160-5': 'Actos, omisiones o imprudencias temerarias',
-  '160-6': 'Perjuicio material intencional',
-  '160-7': 'Incumplimiento grave de obligaciones',
-  '163-bis': 'Autodespido (despido indirecto)',
-};
+export const ESTADO = {
+  ACTIVO: { label: 'Activo', color: 'success' },
+  INACTIVO: { label: 'Inactivo', color: 'neutral' },
+  PENDIENTE: { label: 'Pendiente', color: 'warning' },
+  APROBADO: { label: 'Aprobado', color: 'success' },
+  RECHAZADO: { label: 'Rechazado', color: 'danger' },
+  BORRADOR: { label: 'Borrador', color: 'neutral' },
+  ENVIADO: { label: 'Enviado', color: 'info' },
+  PAGADO: { label: 'Pagado', color: 'success' },
+  VENCIDO: { label: 'Vencido', color: 'danger' },
+  CANCELADO: { label: 'Cancelado', color: 'neutral' },
+}
 
-export const TIPO_PERMISO = {
-  VACACIONES: 'Vacaciones',
-  ADMINISTRATIVO: 'Permiso administrativo',
-  MEDICO: 'Licencia medica',
-  MATERNAL: 'Licencia maternal',
-  PATERNAL: 'Licencia paternal',
-  DUELO: 'Permiso por duelo',
-  MATRIMONIO: 'Permiso por matrimonio',
-  SINDICAL: 'Permiso sindical',
-  CAPACITACION: 'Permiso por capacitacion',
-  OTRO: 'Otro',
-};
-
-const { SUPER_ADMIN, SUPERVISOR, OWNER, ADMIN, WORKER } = ROLES;
-const MANAGEMENT = [SUPER_ADMIN, SUPERVISOR, OWNER, ADMIN];
-const ALL_ROLES = [SUPER_ADMIN, SUPERVISOR, OWNER, ADMIN, WORKER];
-const OWNER_ADMIN = [SUPER_ADMIN, OWNER, ADMIN];
-
-export const NAV_ITEMS = [
-  {
-    href: '/dashboard',
-    label: 'Dashboard',
-    icon: 'LayoutDashboard',
-    roles: ALL_ROLES,
-  },
-  {
-    href: '/trabajadores',
-    label: 'Trabajadores',
-    icon: 'Users',
-    roles: MANAGEMENT,
-  },
-  {
-    href: '/contratos',
-    label: 'Contratos',
-    icon: 'FileText',
-    roles: ALL_ROLES,
-  },
-  {
-    href: '/liquidaciones',
-    label: 'Liquidaciones',
-    icon: 'Receipt',
-    roles: ALL_ROLES,
-    badgeKey: 'liquidacionesPendientes',
-  },
-  {
-    href: '/cotizaciones',
-    label: 'Cotizaciones',
-    icon: 'Calculator',
-    roles: MANAGEMENT,
-  },
-  {
-    href: '/asistencia',
-    label: 'Asistencia',
-    icon: 'Clock',
-    roles: ALL_ROLES,
-  },
-  {
-    href: '/vacaciones',
-    label: 'Vacaciones',
-    icon: 'Palmtree',
-    roles: ALL_ROLES,
-    badgeKey: 'solicitudesPendientes',
-  },
-  {
-    href: '/finiquitos',
-    label: 'Finiquitos',
-    icon: 'UserMinus',
-    roles: MANAGEMENT,
-  },
-  {
-    href: '/ley-karin',
-    label: 'Ley Karin',
-    icon: 'Shield',
-    roles: MANAGEMENT,
-    badgeKey: 'denunciasPendientes',
-  },
-  {
-    href: '/compliance',
-    label: 'Compliance',
-    icon: 'ClipboardCheck',
-    roles: MANAGEMENT,
-  },
-  {
-    href: '/documentos',
-    label: 'Documentos',
-    icon: 'FolderOpen',
-    roles: MANAGEMENT,
-  },
-  {
-    href: '/configuracion',
-    label: 'Configuracion',
-    icon: 'Settings',
-    roles: OWNER_ADMIN,
-  },
-  {
-    href: '/planes',
-    label: 'Planes',
-    icon: 'CreditCard',
-    roles: OWNER_ADMIN,
-  },
-];
+export const NAV_ITEMS = {
+  [ROLES.SUPER_ADMIN]: [
+    { label: 'Dashboard', path: '/admin', icon: 'LayoutDashboard' },
+    { label: 'Empresas', path: '/admin/empresas', icon: 'Building2' },
+    { label: 'Supervisoras', path: '/admin/supervisoras', icon: 'Shield' },
+    { label: 'Usuarios', path: '/admin/usuarios', icon: 'Users' },
+  ],
+  [ROLES.SUPERVISOR]: [
+    { label: 'Dashboard', path: '/supervisor', icon: 'LayoutDashboard' },
+    { label: 'Mis Empresas', path: '/supervisor/empresas', icon: 'Building2' },
+  ],
+  [ROLES.OWNER]: [
+    { label: 'Dashboard', path: '/empresa', icon: 'LayoutDashboard' },
+    { label: 'Trabajadores', path: '/empresa/trabajadores', icon: 'Users' },
+    { label: 'Contratos', path: '/empresa/contratos', icon: 'FileText' },
+    { label: 'Liquidaciones', path: '/empresa/liquidaciones', icon: 'DollarSign' },
+    { label: 'Cotizaciones', path: '/empresa/cotizaciones', icon: 'Receipt' },
+    { label: 'Asistencia', path: '/empresa/asistencia', icon: 'Clock' },
+    { label: 'Vacaciones', path: '/empresa/vacaciones', icon: 'Palmtree' },
+    { label: 'Permisos', path: '/empresa/permisos', icon: 'CalendarCheck' },
+    { label: 'Finiquitos', path: '/empresa/finiquitos', icon: 'FileX' },
+    { label: 'Ley Karin', path: '/empresa/karin', icon: 'AlertTriangle' },
+    { label: 'Documentos', path: '/empresa/documentos', icon: 'FolderOpen' },
+    { label: 'Compliance', path: '/empresa/compliance', icon: 'ShieldCheck' },
+    { label: 'Configuración', path: '/empresa/configuracion', icon: 'Settings' },
+  ],
+  [ROLES.ADMIN]: [
+    { label: 'Dashboard', path: '/empresa', icon: 'LayoutDashboard' },
+    { label: 'Trabajadores', path: '/empresa/trabajadores', icon: 'Users' },
+    { label: 'Contratos', path: '/empresa/contratos', icon: 'FileText' },
+    { label: 'Liquidaciones', path: '/empresa/liquidaciones', icon: 'DollarSign' },
+    { label: 'Cotizaciones', path: '/empresa/cotizaciones', icon: 'Receipt' },
+    { label: 'Asistencia', path: '/empresa/asistencia', icon: 'Clock' },
+    { label: 'Vacaciones', path: '/empresa/vacaciones', icon: 'Palmtree' },
+    { label: 'Permisos', path: '/empresa/permisos', icon: 'CalendarCheck' },
+    { label: 'Finiquitos', path: '/empresa/finiquitos', icon: 'FileX' },
+    { label: 'Ley Karin', path: '/empresa/karin', icon: 'AlertTriangle' },
+    { label: 'Documentos', path: '/empresa/documentos', icon: 'FolderOpen' },
+    { label: 'Compliance', path: '/empresa/compliance', icon: 'ShieldCheck' },
+    { label: 'Configuración', path: '/empresa/configuracion', icon: 'Settings' },
+  ],
+  [ROLES.WORKER]: [
+    { label: 'Mi Portal', path: '/portal', icon: 'Home' },
+    { label: 'Mis Liquidaciones', path: '/portal/liquidaciones', icon: 'DollarSign' },
+    { label: 'Mi Contrato', path: '/portal/contrato', icon: 'FileText' },
+    { label: 'Mis Vacaciones', path: '/portal/vacaciones', icon: 'Palmtree' },
+    { label: 'Asistencia', path: '/portal/asistencia', icon: 'Clock' },
+  ],
+}
