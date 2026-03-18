@@ -1,152 +1,99 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  DollarSign, FileText, Clock, Shield, Building2, Bot,
-  Check, ArrowRight, X, Send, Loader2
+  FileText, Calculator, Clock, CalendarDays, ShieldAlert, CheckCircle2,
+  X, ArrowRight, Check
 } from 'lucide-react'
-import { PLANS } from '../../lib/constants'
-import { formatCLP } from '../../lib/utils'
 import SalesChatWidget from '../../components/SalesChatWidget'
 
-const FEATURES = [
-  {
-    icon: DollarSign,
-    title: 'Remuneraciones',
-    description: 'Calcula liquidaciones de sueldo con todos los descuentos legales chilenos de forma automatica.',
-  },
-  {
-    icon: FileText,
-    title: 'Contratos',
-    description: 'Genera contratos laborales digitales adaptados a la legislacion chilena vigente.',
-  },
-  {
-    icon: Clock,
-    title: 'Asistencia',
-    description: 'Controla la asistencia, horas extra y permisos de tus trabajadores en un solo lugar.',
-  },
-  {
-    icon: Shield,
-    title: 'Ley Karin',
-    description: 'Cumple con la Ley 21.643 de acoso laboral. Protocolo, denuncias y seguimiento integrado.',
-  },
-  {
-    icon: Building2,
-    title: 'Cotizaciones Previsionales',
-    description: 'Genera y gestiona las cotizaciones de AFP, salud y seguro de cesantia de tus trabajadores.',
-  },
-  {
-    icon: Bot,
-    title: 'IA Integrada',
-    description: 'Consulta dudas laborales, genera documentos y obtiene respuestas al instante con inteligencia artificial.',
-  },
+const features = [
+  { icon: FileText, title: 'Liquidaciones', desc: 'Genera liquidaciones de sueldo automáticas y conformes a la ley.' },
+  { icon: Calculator, title: 'Cotizaciones', desc: 'Calcula y gestiona cotizaciones previsionales AFP, salud e ISL.' },
+  { icon: Clock, title: 'Asistencia', desc: 'Control de asistencia con marcaje digital y reportes.' },
+  { icon: CalendarDays, title: 'Vacaciones', desc: 'Gestión de vacaciones con cálculo automático de días disponibles.' },
+  { icon: ShieldAlert, title: 'Ley Karin', desc: 'Protocolo de prevención y canal de denuncias Ley 21.643.' },
+  { icon: CheckCircle2, title: 'Compliance', desc: 'Cumplimiento normativo laboral actualizado automáticamente.' }
+]
+
+const plans = [
+  { name: 'Starter', price: '$20.000', workers: 'Hasta 5 trabajadores', features: ['Liquidaciones', 'Cotizaciones', 'Asistencia', 'Soporte email'] },
+  { name: 'Profesional', price: '$50.000', workers: 'Hasta 25 trabajadores', popular: true, features: ['Todo en Starter', 'Vacaciones', 'Permisos', 'Ley Karin', 'Soporte prioritario'] },
+  { name: 'Business', price: '$90.000', workers: 'Hasta 100 trabajadores', features: ['Todo en Profesional', 'Compliance', 'Finiquitos', 'Documentos', 'Asistente IA'] },
+  { name: 'Enterprise', price: 'Contactar', workers: 'Trabajadores ilimitados', features: ['Todo en Business', 'API dedicada', 'Soporte 24/7', 'Implementación guiada'] }
 ]
 
 export default function LandingPage() {
-  const [demoOpen, setDemoOpen] = useState(false)
-  const [demoForm, setDemoForm] = useState({
-    nombre: '', email: '', empresa: '', telefono: '', mensaje: '',
-  })
-  const [demoLoading, setDemoLoading] = useState(false)
+  const [showDemo, setShowDemo] = useState(false)
+  const [demoForm, setDemoForm] = useState({ nombre: '', email: '', empresa: '', telefono: '', mensaje: '' })
   const [demoSent, setDemoSent] = useState(false)
-  const [demoError, setDemoError] = useState('')
+  const [demoSending, setDemoSending] = useState(false)
 
   const handleDemoSubmit = async (e) => {
     e.preventDefault()
-    setDemoLoading(true)
-    setDemoError('')
+    setDemoSending(true)
     try {
-      const res = await fetch('https://n8n.pymelaboral.cl/webhook/demo-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(demoForm),
-      })
-      if (!res.ok) throw new Error('Error al enviar')
+      // Webhook placeholder - just log for now
+      console.log('Demo request:', demoForm)
       setDemoSent(true)
     } catch {
-      setDemoError('No se pudo enviar la solicitud. Intenta nuevamente.')
+      alert('Error al enviar solicitud')
     } finally {
-      setDemoLoading(false)
+      setDemoSending(false)
     }
   }
 
+  const onDemoChange = (field) => (e) => setDemoForm({ ...demoForm, [field]: e.target.value })
+
   return (
     <div className="min-h-screen bg-white">
-      {/* Navbar */}
-      <nav className="border-b border-[#E5E7EB] bg-white sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-7 h-7 text-[#2563EB]" />
-            <span className="text-xl font-bold text-[#111827]">PymeLaboral</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setDemoOpen(true)}
-              className="text-sm font-medium text-[#2563EB] hover:text-[#1E40AF] transition-colors"
-            >
-              Solicita una demo
-            </button>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 bg-[#2563EB] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1E40AF] transition-colors"
-            >
-              Iniciar sesion
-            </Link>
-          </div>
+      {/* Nav */}
+      <nav className="border-b border-[#E5E7EB] px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <span className="text-xl font-bold text-[#2563EB]">PymeLaboral</span>
+          <Link to="/login" className="text-sm text-[#2563EB] hover:text-[#1E40AF] font-medium">
+            Iniciar sesión
+          </Link>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="bg-white py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#111827] leading-tight">
-            Gestion laboral simple
-            <br />
-            para PYMEs chilenas
+      <section className="px-6 py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#111827] mb-4 leading-tight">
+            Gestión laboral simple para PYMEs chilenas
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-[#6B7280] max-w-2xl mx-auto">
-            Remuneraciones, contratos, asistencia, Ley Karin y cotizaciones previsionales.
-            Todo en una sola plataforma con inteligencia artificial.
+          <p className="text-lg text-[#6B7280] mb-8 max-w-2xl mx-auto">
+            Liquidaciones, cotizaciones, asistencia, vacaciones y cumplimiento normativo en una sola plataforma.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
             <button
-              onClick={() => setDemoOpen(true)}
-              className="inline-flex items-center gap-2 bg-[#2563EB] text-white px-8 py-3.5 rounded-lg text-base font-medium hover:bg-[#1E40AF] transition-colors"
+              onClick={() => setShowDemo(true)}
+              className="bg-[#2563EB] text-white px-6 py-3 rounded-lg hover:bg-[#1E40AF] transition-colors font-medium flex items-center gap-2 cursor-pointer"
             >
               Solicita una demo
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4" />
             </button>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 border border-[#E5E7EB] text-[#111827] px-8 py-3.5 rounded-lg text-base font-medium hover:bg-gray-50 transition-colors"
-            >
-              Iniciar sesion
+            <Link to="/login" className="text-[#2563EB] hover:text-[#1E40AF] font-medium px-6 py-3">
+              Iniciar sesión
             </Link>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="bg-gray-50 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-[#111827]">
-              Todo lo que necesitas para gestionar tu equipo
-            </h2>
-            <p className="mt-4 text-[#6B7280] text-lg max-w-2xl mx-auto">
-              Cumple con la normativa laboral chilena sin complicaciones. Automatiza procesos y enfocate en hacer crecer tu negocio.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {FEATURES.map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-white border border-[#E5E7EB] rounded-xl p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-4">
-                  <feature.icon className="w-6 h-6 text-[#2563EB]" />
+      <section className="px-6 py-16 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-bold text-[#111827] text-center mb-10">
+            Todo lo que necesitas para gestionar tu equipo
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f) => (
+              <div key={f.title} className="bg-white rounded-lg border border-[#E5E7EB] p-6">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
+                  <f.icon className="w-5 h-5 text-[#2563EB]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#111827] mb-2">{feature.title}</h3>
-                <p className="text-sm text-[#6B7280] leading-relaxed">{feature.description}</p>
+                <h3 className="text-base font-semibold text-[#111827] mb-2">{f.title}</h3>
+                <p className="text-sm text-[#6B7280]">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -154,199 +101,121 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-[#111827]">
-              Planes para cada etapa de tu empresa
-            </h2>
-            <p className="mt-4 text-[#6B7280] text-lg">
-              Sin contratos de permanencia. Cancela cuando quieras.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {PLANS.map((plan) => {
-              const isPopular = plan.id === 'profesional'
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative bg-white border rounded-xl p-6 flex flex-col ${
-                    isPopular ? 'border-[#2563EB] ring-2 ring-[#2563EB]' : 'border-[#E5E7EB]'
+      <section className="px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-bold text-[#111827] text-center mb-10">Planes y Precios</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {plans.map((p) => (
+              <div key={p.name} className={`bg-white rounded-lg border p-6 flex flex-col ${p.popular ? 'border-[#2563EB] ring-2 ring-[#2563EB]' : 'border-[#E5E7EB]'}`}>
+                {p.popular && (
+                  <span className="text-xs font-medium text-[#2563EB] bg-blue-50 px-2 py-1 rounded-full self-start mb-3">
+                    Más popular
+                  </span>
+                )}
+                <h3 className="text-lg font-bold text-[#111827] mb-1">{p.name}</h3>
+                <p className="text-2xl font-bold text-[#2563EB] mb-1">
+                  {p.price}<span className="text-sm font-normal text-[#6B7280]">{p.price !== 'Contactar' ? '/mes' : ''}</span>
+                </p>
+                <p className="text-sm text-[#6B7280] mb-4">{p.workers}</p>
+                <ul className="space-y-2 flex-1 mb-6">
+                  {p.features.map((feat) => (
+                    <li key={feat} className="flex items-center gap-2 text-sm text-[#111827]">
+                      <Check className="w-4 h-4 text-[#059669] shrink-0" />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => setShowDemo(true)}
+                  className={`w-full py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                    p.popular
+                      ? 'bg-[#2563EB] text-white hover:bg-[#1E40AF]'
+                      : 'border border-[#E5E7EB] text-[#111827] hover:bg-gray-50'
                   }`}
                 >
-                  {isPopular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-xs font-medium px-3 py-1 rounded-full">
-                      Mas popular
-                    </div>
-                  )}
-                  <h3 className="text-lg font-semibold text-[#111827]">{plan.name}</h3>
-                  <div className="mt-4 mb-6">
-                    {plan.price != null ? (
-                      <>
-                        <span className="text-3xl font-bold text-[#111827]">{formatCLP(plan.price)}</span>
-                        <span className="text-[#6B7280] text-sm">/mes</span>
-                      </>
-                    ) : (
-                      <span className="text-3xl font-bold text-[#111827]">Contactar</span>
-                    )}
-                  </div>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-[#6B7280]">
-                        <Check className="w-4 h-4 text-[#059669] shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => setDemoOpen(true)}
-                    className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      isPopular
-                        ? 'bg-[#2563EB] text-white hover:bg-[#1E40AF]'
-                        : 'border border-[#E5E7EB] text-[#111827] hover:bg-gray-50'
-                    }`}
-                  >
-                    {plan.price != null ? 'Solicitar demo' : 'Contactar ventas'}
-                  </button>
-                </div>
-              )
-            })}
+                  {p.price === 'Contactar' ? 'Contactar' : 'Solicitar demo'}
+                </button>
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-gray-50 py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-[#111827]">
-            Simplifica la gestion laboral de tu PYME hoy
-          </h2>
-          <p className="mt-4 text-[#6B7280] text-lg">
-            Unete a las empresas chilenas que ya automatizan sus procesos de recursos humanos.
-          </p>
-          <button
-            onClick={() => setDemoOpen(true)}
-            className="mt-8 inline-flex items-center gap-2 bg-[#2563EB] text-white px-8 py-3.5 rounded-lg text-base font-medium hover:bg-[#1E40AF] transition-colors"
-          >
-            Solicita una demo gratuita
-            <ArrowRight className="w-5 h-5" />
-          </button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-[#E5E7EB] py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-[#2563EB]" />
-              <span className="text-lg font-bold text-[#111827]">PymeLaboral</span>
-            </div>
-            <p className="text-sm text-[#6B7280]">
-              &copy; {new Date().getFullYear()} PymeLaboral. Todos los derechos reservados.
-            </p>
-          </div>
+      <footer className="border-t border-[#E5E7EB] px-6 py-8">
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-sm text-[#6B7280]">&copy; {new Date().getFullYear()} PymeLaboral. Todos los derechos reservados.</p>
         </div>
       </footer>
 
       {/* Demo Modal */}
-      {demoOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setDemoOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
-              <h2 className="text-lg font-semibold text-[#111827]">Solicita una demo</h2>
-              <button
-                onClick={() => setDemoOpen(false)}
-                className="p-1 rounded-lg text-[#6B7280] hover:bg-gray-100 transition-colors"
-              >
+      {showDemo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-[#E5E7EB]">
+              <h2 className="text-lg font-bold text-[#111827]">Solicitar Demo</h2>
+              <button onClick={() => { setShowDemo(false); setDemoSent(false) }}
+                className="text-[#6B7280] hover:text-[#111827] cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-6 py-4">
-              {demoSent ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-6 h-6 text-[#059669]" />
-                  </div>
-                  <p className="text-base font-medium text-[#111827] mb-2">Solicitud enviada</p>
-                  <p className="text-sm text-[#6B7280]">
-                    Nos pondremos en contacto contigo pronto.
-                  </p>
+            {demoSent ? (
+              <div className="p-6 text-center">
+                <CheckCircle2 className="w-12 h-12 text-[#059669] mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-[#111827] mb-2">Solicitud enviada</h3>
+                <p className="text-sm text-[#6B7280] mb-4">
+                  Nos pondremos en contacto contigo a la brevedad.
+                </p>
+                <button
+                  onClick={() => { setShowDemo(false); setDemoSent(false); setDemoForm({ nombre: '', email: '', empresa: '', telefono: '', mensaje: '' }) }}
+                  className="bg-[#2563EB] text-white px-4 py-2 rounded-lg hover:bg-[#1E40AF] cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleDemoSubmit} className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Nombre</label>
+                  <input type="text" value={demoForm.nombre} onChange={onDemoChange('nombre')} required
+                    className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]" />
                 </div>
-              ) : (
-                <form onSubmit={handleDemoSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#111827] mb-1">Nombre</label>
-                    <input
-                      type="text"
-                      required
-                      value={demoForm.nombre}
-                      onChange={(e) => setDemoForm({ ...demoForm, nombre: e.target.value })}
-                      className="block w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#111827] mb-1">Email</label>
-                    <input
-                      type="email"
-                      required
-                      value={demoForm.email}
-                      onChange={(e) => setDemoForm({ ...demoForm, email: e.target.value })}
-                      className="block w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#111827] mb-1">Empresa</label>
-                    <input
-                      type="text"
-                      required
-                      value={demoForm.empresa}
-                      onChange={(e) => setDemoForm({ ...demoForm, empresa: e.target.value })}
-                      className="block w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#111827] mb-1">Telefono</label>
-                    <input
-                      type="tel"
-                      value={demoForm.telefono}
-                      onChange={(e) => setDemoForm({ ...demoForm, telefono: e.target.value })}
-                      className="block w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#111827] mb-1">Mensaje</label>
-                    <textarea
-                      rows={3}
-                      value={demoForm.mensaje}
-                      onChange={(e) => setDemoForm({ ...demoForm, mensaje: e.target.value })}
-                      className="block w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent resize-none"
-                    />
-                  </div>
-                  {demoError && (
-                    <p className="text-sm text-[#DC2626]">{demoError}</p>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={demoLoading}
-                    className="w-full flex items-center justify-center gap-2 bg-[#2563EB] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1E40AF] disabled:opacity-50 transition-colors"
-                  >
-                    {demoLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                    Enviar solicitud
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Email</label>
+                  <input type="email" value={demoForm.email} onChange={onDemoChange('email')} required
+                    className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Empresa</label>
+                  <input type="text" value={demoForm.empresa} onChange={onDemoChange('empresa')} required
+                    className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Teléfono</label>
+                  <input type="tel" value={demoForm.telefono} onChange={onDemoChange('telefono')}
+                    className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-1">Mensaje</label>
+                  <textarea value={demoForm.mensaje} onChange={onDemoChange('mensaje')} rows={3}
+                    className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] resize-none" />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={() => setShowDemo(false)}
+                    className="px-4 py-2 text-sm text-[#6B7280] border border-[#E5E7EB] rounded-lg hover:bg-gray-50 cursor-pointer">
+                    Cancelar
                   </button>
-                </form>
-              )}
-            </div>
+                  <button type="submit" disabled={demoSending}
+                    className="px-4 py-2 text-sm text-white bg-[#2563EB] rounded-lg hover:bg-[#1E40AF] disabled:opacity-50 cursor-pointer">
+                    {demoSending ? 'Enviando...' : 'Enviar Solicitud'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
 
-      {/* Sales Chat Widget */}
       <SalesChatWidget />
     </div>
   )

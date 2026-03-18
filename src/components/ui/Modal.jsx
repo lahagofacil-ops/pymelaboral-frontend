@@ -1,55 +1,48 @@
 import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { classNames } from '../../lib/utils'
+
+const sizeClasses = {
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-2xl'
+}
 
 export default function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose?.()
+    }
     if (open) {
+      document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
     }
     return () => {
+      document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = ''
     }
-  }, [open])
-
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (open) {
-      document.addEventListener('keydown', handleEsc)
-    }
-    return () => document.removeEventListener('keydown', handleEsc)
   }, [open, onClose])
 
   if (!open) return null
 
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
-      <div className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size] || sizeClasses.md} mx-4 max-h-[90vh] flex flex-col`}>
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.()
+      }}
+    >
+      <div className={classNames('bg-white rounded-xl shadow-xl w-full mx-4', sizeClasses[size])}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
           <h2 className="text-lg font-semibold text-[#111827]">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#6B7280] hover:bg-gray-100 transition-colors"
+            className="text-[#6B7280] hover:text-[#111827] transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="px-6 py-4 overflow-y-auto">
+        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
           {children}
         </div>
         {footer && (
@@ -58,7 +51,6 @@ export default function Modal({ open, onClose, title, children, footer, size = '
           </div>
         )}
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }

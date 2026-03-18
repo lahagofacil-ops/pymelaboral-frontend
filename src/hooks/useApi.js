@@ -1,49 +1,30 @@
-import { useState, useCallback, useRef } from 'react'
-import { apiClient } from '../api/client'
+import { useState, useEffect, useCallback } from 'react'
 
-export function useApi(method, url) {
+export function useApi(fetcher) {
   const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const urlRef = useRef(url)
-  urlRef.current = url
 
-  const execute = useCallback(async (bodyOrOverrideUrl = null, body = null) => {
+  const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
-    setData(null)
-
     try {
-      let finalUrl = urlRef.current
-      let finalBody = bodyOrOverrideUrl
-
-      // If first arg is a string, treat it as URL override
-      if (typeof bodyOrOverrideUrl === 'string') {
-        finalUrl = bodyOrOverrideUrl
-        finalBody = body
-      }
-
-      const res = await apiClient[method](finalUrl, finalBody)
-
-      if (res.success) {
-        setData(res.data)
+      const result = await fetcher()
+      if (result.success) {
+        setData(result.data)
       } else {
-        setError(res.error || 'Error desconocido')
+        setError(result.error)
       }
-
-      return res
     } catch (err) {
-      const msg = err.message || 'Error inesperado'
-      setError(msg)
-      return { success: false, error: msg }
+      setError(err.message || 'Error inesperado')
     } finally {
       setLoading(false)
     }
-  }, [method])
+  }, [fetcher])
 
-  const refetch = useCallback(() => {
-    return execute()
-  }, [execute])
+  useEffect(() => {
+    refetch()
+  }, [refetch])
 
-  return { data, loading, error, execute, refetch }
+  return { data, loading, error, refetch }
 }

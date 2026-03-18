@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Eye } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatCLP, formatDate } from '../../lib/utils'
@@ -10,174 +10,209 @@ import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
+
+const initialForm = {
+  trabajadorId: '',
+  causal: '',
+  fechaTermino: '',
+}
 
 export default function FiniquitosPage() {
   const [finiquitos, setFiniquitos] = useState([])
   const [trabajadores, setTrabajadores] = useState([])
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, pages: 1 })
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [selectedFiniquito, setSelectedFiniquito] = useState(null)
-  const [form, setForm] = useState({ trabajadorId: '', causal: '', fechaTermino: '' })
+  const [error, setError] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [showDetail, setShowDetail] = useState(null)
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [fRes, tRes] = await Promise.all([
-        apiClient.get('/api/finiquitos'),
-        apiClient.get('/api/trabajadores'),
-      ])
-      if (fRes.success) setFiniquitos(fRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+  }, [])
 
-  const handleSave = async () => {
-    setSaving(true)
-    setError('')
+  const fetchData = async () => {
     try {
-      const res = await apiClient.post('/api/finiquitos', form)
-      if (res.success) {
-        setModalOpen(false)
-        setForm({ trabajadorId: '', causal: '', fechaTermino: '' })
-        await fetchData()
+      setLoading(true)
+      setError(null)
+      const [finRes, trabRes] = await Promise.all([
+        apiClient.get('/api/finiquitos'),
+        apiClient.get('/api/trabajadores'),
+      ])
+      if (finRes.success) {
+        setFiniquitos(finRes.data.finiquitos || [])
+        if (finRes.data.pagination) setPagination(finRes.data.pagination)
       } else {
-        setError(res.error || 'Error al crear finiquito')
+        setError(finRes.error || 'Error al cargar finiquitos')
       }
-    } catch {
-      setError('Error de conexion')
+      if (trabRes.success) {
+        setTrabajadores(Array.isArray(trabRes.data) ? trabRes.data : [])
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      setError(null)
+      const result = await apiClient.post('/api/finiquitos', form)
+      if (result.success) {
+        setShowModal(false)
+        setForm(initialForm)
+        fetchData()
+      } else {
+        setError(result.error || 'Error al crear finiquito')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleViewDetail = async (f) => {
-    try {
-      const res = await apiClient.get(`/api/finiquitos/${f.id}`)
-      if (res.success) {
-        setSelectedFiniquito(res.data)
-        setDetailOpen(true)
-      }
-    } catch {
-      setError('Error al cargar detalle')
-    }
-  }
-
-  const estadoBadge = (estado) => {
-    const map = { PAGADO: 'success', PENDIENTE: 'warning', BORRADOR: 'neutral' }
-    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
-  }
+  const causalOptions = Array.isArray(CAUSAL_TERMINO)
+    ? CAUSAL_TERMINO.map((c) => ({ value: c, label: c }))
+    : Object.entries(CAUSAL_TERMINO).map(([value, label]) => ({ value, label }))
 
   const columns = [
     {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
+      header: 'Trabajador',
+      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
     },
     {
-      key: 'causal',
-      label: 'Causal',
-      render: (val) => CAUSAL_TERMINO.find((c) => c.value === val)?.label || val,
+      header: 'Causal',
+      accessor: (row) => {
+        if (typeof CAUSAL_TERMINO === 'object' && !Array.isArray(CAUSAL_TERMINO)) {
+          return CAUSAL_TERMINO[row.causal] || row.causal
+        }
+        return row.causal
+      },
     },
-    { key: 'fechaTermino', label: 'Fecha', render: (val) => formatDate(val) },
-    { key: 'total', label: 'Total', render: (val) => formatCLP(val) },
-    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
     {
-      key: 'actions',
-      label: '',
-      render: (_, row) => (
-        <button
-          onClick={() => handleViewDetail(row)}
-          className="p-1.5 rounded-lg text-[#2563EB] hover:bg-blue-50 transition-colors"
-          title="Ver detalle"
-        >
+      header: 'Fecha Término',
+      accessor: (row) => formatDate(row.fechaTermino),
+    },
+    {
+      header: 'Total',
+      accessor: (row) => formatCLP(row.total),
+    },
+    {
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'PAGADO' ? 'success' : row.estado === 'GENERADO' ? 'warning' : 'default'}>
+          {row.estado}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Acciones',
+      accessor: (row) => (
+        <Button variant="ghost" size="sm" onClick={() => setShowDetail(row)}>
           <Eye className="w-4 h-4" />
-        </button>
+        </Button>
       ),
     },
   ]
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Finiquitos</h1>
-        <Button onClick={() => { setForm({ trabajadorId: '', causal: '', fechaTermino: '' }); setModalOpen(true) }}>
-          <Plus className="w-4 h-4" />
-          Nuevo finiquito
+        <Button onClick={() => { setForm(initialForm); setShowModal(true) }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nuevo Finiquito
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <Table columns={columns} data={finiquitos} loading={loading} emptyMessage="No hay finiquitos" />
+      <Table columns={columns} data={finiquitos} emptyMessage="No hay finiquitos registrados" />
 
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Nuevo finiquito"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>Crear</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+      {pagination.pages > 1 && (
+        <div className="flex justify-center gap-2 pt-4">
+          <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}>
+            Anterior
+          </Button>
+          <span className="flex items-center text-sm text-[#6B7280]">Página {pagination.page} de {pagination.pages}</span>
+          <Button variant="outline" size="sm" disabled={pagination.page >= pagination.pages} onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}>
+            Siguiente
+          </Button>
+        </div>
+      )}
+
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo Finiquito">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Trabajador"
+            name="trabajadorId"
             value={form.trabajadorId}
-            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
+            onChange={handleChange}
+            required
             options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
           />
-          <Select
-            label="Causal de termino"
-            value={form.causal}
-            onChange={(e) => setForm({ ...form, causal: e.target.value })}
-            options={CAUSAL_TERMINO}
-          />
-          <Input label="Fecha de termino" type="date" value={form.fechaTermino} onChange={(e) => setForm({ ...form, fechaTermino: e.target.value })} />
-        </div>
+          <Select label="Causal de Término" name="causal" value={form.causal} onChange={handleChange} required options={causalOptions} />
+          <Input label="Fecha de Término" name="fechaTermino" type="date" value={form.fechaTermino} onChange={handleChange} required />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>Crear Finiquito</Button>
+          </div>
+        </form>
       </Modal>
 
-      <Modal
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title="Detalle del finiquito"
-        size="lg"
-      >
-        {selectedFiniquito && (
+      <Modal open={!!showDetail} onClose={() => setShowDetail(null)} title="Detalle de Finiquito">
+        {showDetail && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-[#6B7280]">Trabajador:</span> <span className="font-medium text-[#111827]">{selectedFiniquito.trabajador ? `${selectedFiniquito.trabajador.nombre} ${selectedFiniquito.trabajador.apellidoPaterno}` : '-'}</span></div>
-              <div><span className="text-[#6B7280]">Causal:</span> <span className="font-medium text-[#111827]">{CAUSAL_TERMINO.find((c) => c.value === selectedFiniquito.causal)?.label || selectedFiniquito.causal}</span></div>
-              <div><span className="text-[#6B7280]">Fecha:</span> <span className="font-medium text-[#111827]">{formatDate(selectedFiniquito.fechaTermino)}</span></div>
-              <div><span className="text-[#6B7280]">Estado:</span> {estadoBadge(selectedFiniquito.estado)}</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-[#6B7280]">Trabajador</p>
+                <p className="font-medium text-[#111827]">
+                  {showDetail.trabajador?.nombre} {showDetail.trabajador?.apellidoPaterno}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Causal</p>
+                <p className="font-medium text-[#111827]">{showDetail.causal}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Fecha Término</p>
+                <p className="font-medium text-[#111827]">{formatDate(showDetail.fechaTermino)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Estado</p>
+                <Badge variant={showDetail.estado === 'PAGADO' ? 'success' : 'warning'}>
+                  {showDetail.estado}
+                </Badge>
+              </div>
             </div>
-            {selectedFiniquito.desglose && typeof selectedFiniquito.desglose === 'object' && (
+            {showDetail.desglose && (
               <div className="border-t border-[#E5E7EB] pt-4">
-                <h4 className="text-sm font-semibold text-[#111827] mb-2">Desglose</h4>
-                <div className="space-y-2 text-sm">
-                  {Object.entries(selectedFiniquito.desglose).map(([key, val]) => (
-                    <div key={key} className="flex justify-between">
+                <h3 className="font-semibold text-[#111827] mb-2">Desglose</h3>
+                <div className="space-y-2">
+                  {Object.entries(showDetail.desglose).map(([key, value]) => (
+                    <div key={key} className="flex justify-between text-sm">
                       <span className="text-[#6B7280]">{key}</span>
-                      <span className="font-medium text-[#111827]">{formatCLP(val)}</span>
+                      <span className="text-[#111827]">{formatCLP(value)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            <div className="border-t border-[#E5E7EB] pt-4 flex justify-between text-base font-semibold text-[#111827]">
-              <span>Total:</span>
-              <span>{formatCLP(selectedFiniquito.total)}</span>
+            <div className="border-t border-[#E5E7EB] pt-4 flex justify-between">
+              <span className="font-semibold text-[#111827]">Total</span>
+              <span className="font-bold text-lg text-[#111827]">{formatCLP(showDetail.total)}</span>
             </div>
           </div>
         )}

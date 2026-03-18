@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
@@ -8,116 +8,148 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
-import Alert from '../../components/ui/Alert'
 import Card from '../../components/ui/Card'
+import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
+
+const initialForm = {
+  fechaDesde: '',
+  fechaHasta: '',
+  diasHabiles: '',
+  observacion: '',
+}
 
 export default function PortalVacaciones() {
   const { user } = useAuth()
   const [vacaciones, setVacaciones] = useState([])
   const [saldo, setSaldo] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ fechaDesde: '', fechaHasta: '', observacion: '' })
+  const [error, setError] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [vRes, sRes] = await Promise.all([
-        apiClient.get('/api/vacaciones'),
-        user?.trabajadorId ? apiClient.get(`/api/vacaciones/saldo/${user.trabajadorId}`) : Promise.resolve({ success: false }),
-      ])
-      if (vRes.success) setVacaciones(vRes.data)
-      if (sRes.success) setSaldo(sRes.data)
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.trabajadorId])
 
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+  }, [])
 
-  const handleSolicitar = async () => {
-    setSaving(true)
-    setError('')
+  const fetchData = async () => {
     try {
-      const res = await apiClient.post('/api/vacaciones', form)
-      if (res.success) {
-        setModalOpen(false)
-        setForm({ fechaDesde: '', fechaHasta: '', observacion: '' })
-        await fetchData()
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get('/api/vacaciones')
+      if (result.success) {
+        setVacaciones(result.data.vacaciones || [])
       } else {
-        setError(res.error || 'Error al solicitar')
+        setError(result.error || 'Error al cargar vacaciones')
       }
-    } catch {
-      setError('Error de conexion')
+
+      if (user?.trabajadorId) {
+        const saldoRes = await apiClient.get(`/api/vacaciones/saldo/${user.trabajadorId}`)
+        if (saldoRes.success) {
+          setSaldo(saldoRes.data)
+        }
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      setError(null)
+      const payload = {
+        ...form,
+        diasHabiles: Number(form.diasHabiles),
+        trabajadorId: user?.trabajadorId,
+      }
+      const result = await apiClient.post('/api/vacaciones', payload)
+      if (result.success) {
+        setShowModal(false)
+        setForm(initialForm)
+        fetchData()
+      } else {
+        setError(result.error || 'Error al solicitar vacaciones')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const estadoBadge = (estado) => {
-    const map = { APROBADA: 'success', PENDIENTE: 'warning', RECHAZADA: 'danger' }
-    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
-  }
-
   const columns = [
-    { key: 'fechaDesde', label: 'Desde', render: (val) => formatDate(val) },
-    { key: 'fechaHasta', label: 'Hasta', render: (val) => formatDate(val) },
-    { key: 'diasHabiles', label: 'Dias' },
-    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
+    {
+      header: 'Desde',
+      accessor: (row) => formatDate(row.fechaDesde),
+    },
+    {
+      header: 'Hasta',
+      accessor: (row) => formatDate(row.fechaHasta),
+    },
+    { header: 'Días Hábiles', accessor: 'diasHabiles' },
+    {
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'APROBADA' ? 'success' : row.estado === 'RECHAZADA' ? 'danger' : 'warning'}>
+          {row.estado}
+        </Badge>
+      ),
+    },
   ]
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Mis Vacaciones</h1>
-        <Button onClick={() => { setForm({ fechaDesde: '', fechaHasta: '', observacion: '' }); setModalOpen(true) }}>
-          <Plus className="w-4 h-4" />
-          Solicitar vacaciones
+        <Button onClick={() => { setForm(initialForm); setShowModal(true) }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Solicitar Vacaciones
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
       {saldo && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <p className="text-sm text-[#6B7280]">Dias disponibles</p>
-            <p className="text-2xl font-bold text-[#111827]">{saldo.diasDisponibles ?? saldo.disponibles ?? 0}</p>
+          <Card className="p-4 text-center">
+            <p className="text-sm text-[#6B7280]">Días Disponibles</p>
+            <p className="text-2xl font-bold text-[#2563EB]">{saldo.diasDisponibles ?? saldo.disponibles ?? 0}</p>
           </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Dias tomados</p>
+          <Card className="p-4 text-center">
+            <p className="text-sm text-[#6B7280]">Días Tomados</p>
             <p className="text-2xl font-bold text-[#111827]">{saldo.diasTomados ?? saldo.tomados ?? 0}</p>
           </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Dias totales</p>
-            <p className="text-2xl font-bold text-[#111827]">{saldo.diasTotales ?? saldo.total ?? 15}</p>
+          <Card className="p-4 text-center">
+            <p className="text-sm text-[#6B7280]">Días Totales</p>
+            <p className="text-2xl font-bold text-[#111827]">{saldo.diasTotales ?? saldo.total ?? 0}</p>
           </Card>
         </div>
       )}
 
-      <Table columns={columns} data={vacaciones} loading={loading} emptyMessage="No tienes solicitudes de vacaciones" />
+      <Table columns={columns} data={vacaciones} emptyMessage="No tienes solicitudes de vacaciones" />
 
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Solicitar vacaciones"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSolicitar} loading={saving}>Solicitar</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Input label="Desde" type="date" value={form.fechaDesde} onChange={(e) => setForm({ ...form, fechaDesde: e.target.value })} />
-          <Input label="Hasta" type="date" value={form.fechaHasta} onChange={(e) => setForm({ ...form, fechaHasta: e.target.value })} />
-          <Input label="Observacion" value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })} />
-        </div>
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Solicitar Vacaciones">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input label="Fecha Desde" name="fechaDesde" type="date" value={form.fechaDesde} onChange={handleChange} required />
+          <Input label="Fecha Hasta" name="fechaHasta" type="date" value={form.fechaHasta} onChange={handleChange} required />
+          <Input label="Días Hábiles" name="diasHabiles" type="number" value={form.diasHabiles} onChange={handleChange} required />
+          <Input label="Observación" name="observacion" value={form.observacion} onChange={handleChange} />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>Enviar Solicitud</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

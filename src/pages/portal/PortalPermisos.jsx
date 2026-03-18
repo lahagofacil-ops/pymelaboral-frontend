@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { apiClient } from '../../api/client'
+import { useAuth } from '../../context/AuthContext'
 import { formatDate } from '../../lib/utils'
+import { TIPO_PERMISO } from '../../lib/constants'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -9,137 +11,126 @@ import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
-const TIPOS_PERMISO = [
-  { value: 'MEDICO', label: 'Permiso medico' },
-  { value: 'PERSONAL', label: 'Permiso personal' },
-  { value: 'LEGAL', label: 'Permiso legal' },
-  { value: 'MATRIMONIO', label: 'Matrimonio' },
-  { value: 'NACIMIENTO', label: 'Nacimiento de hijo' },
-  { value: 'FALLECIMIENTO', label: 'Fallecimiento familiar' },
-  { value: 'OTRO', label: 'Otro' },
-]
+const initialForm = {
+  tipo: '',
+  fecha: '',
+  dias: '1',
+  observacion: '',
+}
 
 export default function PortalPermisos() {
+  const { user } = useAuth()
   const [permisos, setPermisos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({
-    tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '',
-  })
+  const [error, setError] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
-
-  const fetchPermisos = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/api/permisos')
-      if (res.success) {
-        setPermisos(res.data)
-      } else {
-        setError(res.error || 'Error al cargar permisos')
-      }
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
     fetchPermisos()
-  }, [fetchPermisos])
+  }, [])
 
-  const handleSolicitar = async () => {
-    setSaving(true)
-    setError('')
+  const fetchPermisos = async () => {
     try {
-      const res = await apiClient.post('/api/permisos', {
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get('/api/permisos')
+      if (result.success) {
+        setPermisos(result.data.permisos || [])
+      } else {
+        setError(result.error || 'Error al cargar permisos')
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      setError(null)
+      const payload = {
         ...form,
         dias: Number(form.dias),
-      })
-      if (res.success) {
-        setModalOpen(false)
-        setForm({ tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '' })
-        await fetchPermisos()
-      } else {
-        setError(res.error || 'Error al solicitar')
+        trabajadorId: user?.trabajadorId,
       }
-    } catch {
-      setError('Error de conexion')
+      const result = await apiClient.post('/api/permisos', payload)
+      if (result.success) {
+        setShowModal(false)
+        setForm(initialForm)
+        fetchPermisos()
+      } else {
+        setError(result.error || 'Error al solicitar permiso')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const estadoBadge = (estado) => {
-    const map = { APROBADO: 'success', PENDIENTE: 'warning', RECHAZADO: 'danger' }
-    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
-  }
+  const tipoOptions = Array.isArray(TIPO_PERMISO)
+    ? TIPO_PERMISO.map((t) => ({ value: t, label: t }))
+    : Object.entries(TIPO_PERMISO).map(([value, label]) => ({ value, label }))
 
   const columns = [
+    { header: 'Tipo', accessor: 'tipo' },
     {
-      key: 'tipo',
-      label: 'Tipo',
-      render: (val) => TIPOS_PERMISO.find((t) => t.value === val)?.label || val,
+      header: 'Fecha',
+      accessor: (row) => formatDate(row.fecha),
     },
-    { key: 'fecha', label: 'Fecha', render: (val) => formatDate(val) },
-    { key: 'dias', label: 'Dias' },
+    { header: 'Días', accessor: 'dias' },
     {
-      key: 'conGoce',
-      label: 'Con goce',
-      render: (val) => <Badge variant={val ? 'success' : 'neutral'}>{val ? 'Si' : 'No'}</Badge>,
+      header: 'Observación',
+      accessor: (row) => row.observacion || '—',
     },
-    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
+    {
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'APROBADO' ? 'success' : row.estado === 'RECHAZADO' ? 'danger' : 'warning'}>
+          {row.estado}
+        </Badge>
+      ),
+    },
   ]
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Mis Permisos</h1>
-        <Button onClick={() => {
-          setForm({ tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '' })
-          setModalOpen(true)
-        }}>
-          <Plus className="w-4 h-4" />
-          Solicitar permiso
+        <Button onClick={() => { setForm(initialForm); setShowModal(true) }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Solicitar Permiso
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <Table columns={columns} data={permisos} loading={loading} emptyMessage="No tienes permisos" />
+      <Table columns={columns} data={permisos} emptyMessage="No tienes solicitudes de permisos" />
 
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Solicitar permiso"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSolicitar} loading={saving}>Solicitar</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Select
-            label="Tipo de permiso"
-            value={form.tipo}
-            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-            options={TIPOS_PERMISO}
-          />
-          <Input label="Fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
-          <Input label="Dias" type="number" min="1" value={form.dias} onChange={(e) => setForm({ ...form, dias: e.target.value })} />
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.conGoce}
-              onChange={(e) => setForm({ ...form, conGoce: e.target.checked })}
-              className="w-4 h-4 text-[#2563EB] rounded border-[#E5E7EB] focus:ring-[#2563EB]"
-            />
-            <span className="text-sm text-[#111827]">Con goce de sueldo</span>
-          </label>
-          <Input label="Observacion" value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })} />
-        </div>
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Solicitar Permiso">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Select label="Tipo de Permiso" name="tipo" value={form.tipo} onChange={handleChange} required options={tipoOptions} />
+          <Input label="Fecha" name="fecha" type="date" value={form.fecha} onChange={handleChange} required />
+          <Input label="Días" name="dias" type="number" value={form.dias} onChange={handleChange} required />
+          <Input label="Observación" name="observacion" value={form.observacion} onChange={handleChange} />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>Enviar Solicitud</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

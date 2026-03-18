@@ -1,36 +1,26 @@
-import { createContext, useContext, useState, useCallback } from 'react'
-import { useAuth } from './AuthContext'
+import { createContext, useContext, useState } from 'react'
 
 const EmpresaContext = createContext(null)
 
 export function EmpresaProvider({ children }) {
-  const { user } = useAuth()
+  const [empresaId, setEmpresaId] = useState(() => sessionStorage.getItem('impersonatedEmpresaId'))
+  const [empresaNombre, setEmpresaNombre] = useState(() => sessionStorage.getItem('impersonatedEmpresaNombre'))
 
-  const [impersonatedEmpresaId, setImpersonatedEmpresaId] = useState(() => {
-    return sessionStorage.getItem('impersonatedEmpresaId') || null
-  })
-  const [impersonatedEmpresaNombre, setImpersonatedEmpresaNombre] = useState(() => {
-    return sessionStorage.getItem('impersonatedEmpresaNombre') || null
-  })
-
-  const isImpersonating = !!impersonatedEmpresaId
-
-  const empresaId = isImpersonating ? impersonatedEmpresaId : (user?.empresaId || null)
-  const empresaNombre = isImpersonating ? impersonatedEmpresaNombre : (user?.empresaNombre || null)
-
-  const enterEmpresa = useCallback((id, nombre) => {
+  const enterEmpresa = (id, nombre) => {
     sessionStorage.setItem('impersonatedEmpresaId', id)
     sessionStorage.setItem('impersonatedEmpresaNombre', nombre)
-    setImpersonatedEmpresaId(id)
-    setImpersonatedEmpresaNombre(nombre)
-  }, [])
+    setEmpresaId(id)
+    setEmpresaNombre(nombre)
+  }
 
-  const exitEmpresa = useCallback(() => {
+  const exitEmpresa = () => {
     sessionStorage.removeItem('impersonatedEmpresaId')
     sessionStorage.removeItem('impersonatedEmpresaNombre')
-    setImpersonatedEmpresaId(null)
-    setImpersonatedEmpresaNombre(null)
-  }, [])
+    setEmpresaId(null)
+    setEmpresaNombre(null)
+  }
+
+  const isImpersonating = !!empresaId
 
   return (
     <EmpresaContext.Provider value={{ empresaId, empresaNombre, isImpersonating, enterEmpresa, exitEmpresa }}>
@@ -40,7 +30,9 @@ export function EmpresaProvider({ children }) {
 }
 
 export function useEmpresa() {
-  const ctx = useContext(EmpresaContext)
-  if (!ctx) throw new Error('useEmpresa must be used within EmpresaProvider')
-  return ctx
+  const context = useContext(EmpresaContext)
+  if (!context) {
+    throw new Error('useEmpresa must be used within an EmpresaProvider')
+  }
+  return context
 }

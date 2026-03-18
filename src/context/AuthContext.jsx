@@ -1,50 +1,56 @@
-import { createContext, useContext, useState, useCallback } from 'react'
-import { apiClient } from '../api/client'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  // CRITICAL: Initialize synchronously from sessionStorage to prevent flash redirect
+  const navigate = useNavigate()
+
   const [user, setUser] = useState(() => {
-    const stored = sessionStorage.getItem('user')
-    return stored ? JSON.parse(stored) : null
-  })
-  const [loading, setLoading] = useState(() => {
-    // Only loading if we have tokens but haven't verified yet
-    return !!sessionStorage.getItem('accessToken') && !sessionStorage.getItem('user')
+    const saved = sessionStorage.getItem('user')
+    return saved ? JSON.parse(saved) : null
   })
 
-  const login = useCallback(async (email, password) => {
-    const res = await apiClient.post('/api/auth/login', { email, password })
-    if (!res.success) return res
-    sessionStorage.setItem('accessToken', res.data.accessToken)
-    sessionStorage.setItem('refreshToken', res.data.refreshToken)
-    sessionStorage.setItem('user', JSON.stringify(res.data.user))
-    setUser(res.data.user)
-    return res
+  const [token, setToken] = useState(() => sessionStorage.getItem('accessToken'))
+
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(false)
   }, [])
 
-  const logout = useCallback(() => {
+  const login = (data) => {
+    sessionStorage.setItem('accessToken', data.accessToken)
+    sessionStorage.setItem('refreshToken', data.refreshToken)
+    sessionStorage.setItem('user', JSON.stringify(data.user))
+    setToken(data.accessToken)
+    setUser(data.user)
+  }
+
+  const logout = () => {
     sessionStorage.removeItem('accessToken')
     sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('user')
     sessionStorage.removeItem('impersonatedEmpresaId')
     sessionStorage.removeItem('impersonatedEmpresaNombre')
+    setToken(null)
     setUser(null)
-  }, [])
+    navigate('/')
+  }
 
-  const isAuthenticated = !!user
-  const role = user?.role || null
+  const isAuthenticated = !!token
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, role, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, loading, isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }

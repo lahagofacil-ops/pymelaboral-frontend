@@ -1,128 +1,97 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Eye, Users } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { FileText, Plus } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatCLP, formatDate } from '../../lib/utils'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
-import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
 export default function LiquidacionesPage() {
   const [liquidaciones, setLiquidaciones] = useState([])
-  const [trabajadores, setTrabajadores] = useState([])
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, pages: 1 })
+  const [periodo, setPeriodo] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [periodo, setPeriodo] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
-  const [modalOpen, setModalOpen] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [selectedLiq, setSelectedLiq] = useState(null)
-  const [form, setForm] = useState({ trabajadorId: '', periodo: '' })
-  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const [generating, setGenerating] = useState(false)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  useEffect(() => {
+    fetchLiquidaciones()
+  }, [periodo, pagination.page])
+
+  const fetchLiquidaciones = async () => {
     try {
-      const [lRes, tRes] = await Promise.all([
-        apiClient.get(`/api/liquidaciones?periodo=${periodo}`),
-        apiClient.get('/api/trabajadores'),
-      ])
-      if (lRes.success) setLiquidaciones(lRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
-    } catch {
-      setError('Error de conexion')
+      setLoading(true)
+      setError(null)
+      const params = new URLSearchParams()
+      if (periodo) params.append('periodo', periodo)
+      params.append('page', pagination.page)
+      params.append('limit', pagination.limit)
+      const result = await apiClient.get(`/api/liquidaciones?${params.toString()}`)
+      if (result.success) {
+        setLiquidaciones(result.data.liquidaciones || [])
+        if (result.data.pagination) setPagination(result.data.pagination)
+      } else {
+        setError(result.error || 'Error al cargar liquidaciones')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setLoading(false)
     }
-  }, [periodo])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  }
 
   const handleGenerar = async () => {
-    setSaving(true)
-    setError('')
+    if (!periodo) {
+      setError('Seleccione un periodo para generar liquidaciones')
+      return
+    }
     try {
-      const res = await apiClient.post('/api/liquidaciones', {
-        trabajadorId: form.trabajadorId,
-        periodo: form.periodo || periodo,
-      })
-      if (res.success) {
-        setModalOpen(false)
-        await fetchData()
+      setGenerating(true)
+      setError(null)
+      const result = await apiClient.post('/api/liquidaciones/generar', { periodo })
+      if (result.success) {
+        fetchLiquidaciones()
       } else {
-        setError(res.error || 'Error al generar')
+        setError(result.error || 'Error al generar liquidaciones')
       }
-    } catch {
-      setError('Error de conexion')
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
-      setSaving(false)
+      setGenerating(false)
     }
   }
 
-  const handleGenerarMasivo = async () => {
-    setSaving(true)
-    setError('')
-    try {
-      const res = await apiClient.post('/api/liquidaciones/generar-masivo', { periodo })
-      if (res.success) {
-        await fetchData()
-      } else {
-        setError(res.error || 'Error al generar masivo')
-      }
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleViewDetail = async (liq) => {
-    try {
-      const res = await apiClient.get(`/api/liquidaciones/${liq.id}`)
-      if (res.success) {
-        setSelectedLiq(res.data)
-        setDetailOpen(true)
-      }
-    } catch {
-      setError('Error al cargar detalle')
-    }
-  }
-
-  const estadoBadge = (estado) => {
-    const map = { APROBADA: 'success', PENDIENTE: 'warning', BORRADOR: 'neutral', RECHAZADA: 'danger' }
-    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, page: newPage }))
   }
 
   const columns = [
     {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val, row) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
+      header: 'Trabajador',
+      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
     },
-    { key: 'periodo', label: 'Periodo' },
-    { key: 'sueldoBase', label: 'Sueldo Base', render: (val) => formatCLP(val) },
-    { key: 'totalHaberes', label: 'Haberes', render: (val) => formatCLP(val) },
-    { key: 'totalDescuentos', label: 'Descuentos', render: (val) => formatCLP(val) },
-    { key: 'liquido', label: 'Liquido', render: (val) => <span className="font-medium">{formatCLP(val)}</span> },
-    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
+    { header: 'Periodo', accessor: 'periodo' },
     {
-      key: 'actions',
-      label: '',
-      render: (_, row) => (
-        <button
-          onClick={() => handleViewDetail(row)}
-          className="p-1.5 rounded-lg text-[#2563EB] hover:bg-blue-50 transition-colors"
-          title="Ver detalle"
-        >
-          <Eye className="w-4 h-4" />
-        </button>
+      header: 'Total Haberes',
+      accessor: (row) => formatCLP(row.totalHaberes),
+    },
+    {
+      header: 'Total Descuentos',
+      accessor: (row) => formatCLP(row.totalDescuentos),
+    },
+    {
+      header: 'Líquido',
+      accessor: (row) => <span className="font-semibold">{formatCLP(row.liquido)}</span>,
+    },
+    {
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'PAGADA' ? 'success' : row.estado === 'GENERADA' ? 'warning' : 'default'}>
+          {row.estado}
+        </Badge>
       ),
     },
   ]
@@ -131,21 +100,15 @@ export default function LiquidacionesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Liquidaciones</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleGenerarMasivo} loading={saving}>
-            <Users className="w-4 h-4" />
-            Generar masivo
-          </Button>
-          <Button onClick={() => { setForm({ trabajadorId: '', periodo }); setModalOpen(true) }}>
-            <Plus className="w-4 h-4" />
-            Generar liquidacion
-          </Button>
-        </div>
+        <Button onClick={handleGenerar} loading={generating}>
+          <Plus className="w-4 h-4 mr-2" />
+          Generar Liquidaciones
+        </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Input
           label="Periodo"
           type="month"
@@ -155,82 +118,37 @@ export default function LiquidacionesPage() {
         />
       </div>
 
-      <Table columns={columns} data={liquidaciones} loading={loading} emptyMessage="No hay liquidaciones para este periodo" />
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner /></div>
+      ) : (
+        <>
+          <Table columns={columns} data={liquidaciones} emptyMessage="No hay liquidaciones para este periodo" />
 
-      {/* Generate Modal */}
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Generar liquidacion"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleGenerar} loading={saving}>Generar</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Select
-            label="Trabajador"
-            value={form.trabajadorId}
-            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
-            options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
-          />
-          <Input
-            label="Periodo"
-            type="month"
-            value={form.periodo}
-            onChange={(e) => setForm({ ...form, periodo: e.target.value })}
-          />
-        </div>
-      </Modal>
-
-      {/* Detail Modal */}
-      <Modal
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title="Detalle de liquidacion"
-        size="lg"
-      >
-        {selectedLiq && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-[#6B7280]">Trabajador:</span> <span className="font-medium text-[#111827]">{selectedLiq.trabajador ? `${selectedLiq.trabajador.nombre} ${selectedLiq.trabajador.apellidoPaterno}` : '-'}</span></div>
-              <div><span className="text-[#6B7280]">Periodo:</span> <span className="font-medium text-[#111827]">{selectedLiq.periodo}</span></div>
-              <div><span className="text-[#6B7280]">Sueldo base:</span> <span className="font-medium text-[#111827]">{formatCLP(selectedLiq.sueldoBase)}</span></div>
-              <div><span className="text-[#6B7280]">Estado:</span> {estadoBadge(selectedLiq.estado)}</div>
+          {pagination.pages > 1 && (
+            <div className="flex justify-center gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page <= 1}
+                onClick={() => handlePageChange(pagination.page - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="flex items-center text-sm text-[#6B7280]">
+                Página {pagination.page} de {pagination.pages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page >= pagination.pages}
+                onClick={() => handlePageChange(pagination.page + 1)}
+              >
+                Siguiente
+              </Button>
             </div>
-            <div className="border-t border-[#E5E7EB] pt-4">
-              <h4 className="text-sm font-semibold text-[#111827] mb-2">Haberes</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {selectedLiq.haberes && typeof selectedLiq.haberes === 'object' ? (
-                  Object.entries(selectedLiq.haberes).map(([key, val]) => (
-                    <div key={key} className="flex justify-between"><span className="text-[#6B7280]">{key}:</span> <span>{formatCLP(val)}</span></div>
-                  ))
-                ) : (
-                  <div>Total haberes: {formatCLP(selectedLiq.totalHaberes)}</div>
-                )}
-              </div>
-            </div>
-            <div className="border-t border-[#E5E7EB] pt-4">
-              <h4 className="text-sm font-semibold text-[#111827] mb-2">Descuentos</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {selectedLiq.descuentos && typeof selectedLiq.descuentos === 'object' ? (
-                  Object.entries(selectedLiq.descuentos).map(([key, val]) => (
-                    <div key={key} className="flex justify-between"><span className="text-[#6B7280]">{key}:</span> <span>{formatCLP(val)}</span></div>
-                  ))
-                ) : (
-                  <div>Total descuentos: {formatCLP(selectedLiq.totalDescuentos)}</div>
-                )}
-              </div>
-            </div>
-            <div className="border-t border-[#E5E7EB] pt-4 flex justify-between text-base font-semibold text-[#111827]">
-              <span>Liquido a pagar:</span>
-              <span>{formatCLP(selectedLiq.liquido)}</span>
-            </div>
-          </div>
-        )}
-      </Modal>
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -1,97 +1,98 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { CheckCircle, XCircle, ShieldCheck } from 'lucide-react'
 import { apiClient } from '../../api/client'
-import Spinner from '../../components/ui/Spinner'
+import Badge from '../../components/ui/Badge'
+import Card from '../../components/ui/Card'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
 export default function CompliancePage() {
-  const [items, setItems] = useState([])
+  const [resumen, setResumen] = useState(null)
+  const [checks, setChecks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    const fetchCompliance = async () => {
-      try {
-        const res = await apiClient.get('/api/compliance')
-        if (res.success) {
-          setItems(Array.isArray(res.data) ? res.data : res.data?.items || [])
-        } else {
-          setError(res.error || 'Error al cargar compliance')
-        }
-      } catch {
-        setError('Error de conexion')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchCompliance()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-
-  const getStatusConfig = (status) => {
-    switch (status) {
-      case 'ok':
-      case 'success':
-      case 'cumple':
-        return { icon: CheckCircle, color: 'text-[#059669]', bg: 'bg-green-50 border-green-200' }
-      case 'warning':
-      case 'parcial':
-        return { icon: AlertTriangle, color: 'text-[#D97706]', bg: 'bg-yellow-50 border-yellow-200' }
-      case 'critical':
-      case 'error':
-      case 'no_cumple':
-        return { icon: XCircle, color: 'text-[#DC2626]', bg: 'bg-red-50 border-red-200' }
-      default:
-        return { icon: AlertTriangle, color: 'text-[#6B7280]', bg: 'bg-gray-50 border-gray-200' }
+  const fetchCompliance = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get('/api/compliance')
+      if (result.success) {
+        setResumen(result.data.resumen || null)
+        setChecks(Array.isArray(result.data.checks) ? result.data.checks : [])
+      } else {
+        setError(result.error || 'Error al cargar compliance')
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
     }
   }
 
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
+  if (error) return <Alert type="error">{error}</Alert>
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#111827]">Compliance Laboral</h1>
-        <p className="text-[#6B7280] mt-1">Estado de cumplimiento normativo de tu empresa</p>
-      </div>
+      <h1 className="text-2xl font-bold text-[#111827]">Compliance Laboral</h1>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
-
-      {items.length === 0 ? (
-        <div className="text-center py-12 bg-white border border-[#E5E7EB] rounded-xl">
-          <CheckCircle className="w-12 h-12 text-[#E5E7EB] mx-auto mb-4" />
-          <p className="text-[#6B7280]">No hay items de compliance disponibles</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((item, i) => {
-            const config = getStatusConfig(item.status || item.estado)
-            const Icon = config.icon
-            return (
-              <div
-                key={item.id || i}
-                className={`border rounded-xl p-5 ${config.bg}`}
-              >
-                <div className="flex items-start gap-3">
-                  <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${config.color}`} />
-                  <div>
-                    <h3 className="text-sm font-semibold text-[#111827]">{item.titulo || item.name || item.label}</h3>
-                    <p className="text-sm text-[#6B7280] mt-1">{item.descripcion || item.description || item.message}</p>
-                    {item.recomendacion && (
-                      <p className="text-xs text-[#6B7280] mt-2 italic">{item.recomendacion}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+      {resumen && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="p-6 text-center">
+            <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-[#2563EB]" />
+            <p className="text-3xl font-bold text-[#111827]">{resumen.porcentaje}%</p>
+            <p className="text-sm text-[#6B7280]">Cumplimiento</p>
+          </Card>
+          <Card className="p-6 text-center">
+            <Badge variant={resumen.estado === 'CUMPLE' ? 'success' : resumen.estado === 'PARCIAL' ? 'warning' : 'danger'} className="text-lg px-4 py-1">
+              {resumen.estado}
+            </Badge>
+            <p className="text-sm text-[#6B7280] mt-2">Estado General</p>
+          </Card>
+          <Card className="p-6 text-center">
+            <p className="text-3xl font-bold text-[#111827]">{resumen.cumplidos}/{resumen.total}</p>
+            <p className="text-sm text-[#6B7280]">Requisitos Cumplidos</p>
+          </Card>
         </div>
       )}
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-[#111827]">Verificaciones</h2>
+        {checks.length === 0 ? (
+          <p className="text-center text-[#6B7280] py-8">No hay verificaciones disponibles</p>
+        ) : (
+          checks.map((check, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-0.5">
+                  {check.cumple ? (
+                    <CheckCircle className="w-6 h-6 text-[#059669]" />
+                  ) : (
+                    <XCircle className="w-6 h-6 text-[#DC2626]" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-[#111827]">{check.nombre}</h3>
+                  <p className="text-sm text-[#6B7280] mt-1">{check.descripcion}</p>
+                  {check.accion && !check.cumple && (
+                    <a
+                      href={check.accion}
+                      className="text-sm text-[#2563EB] hover:underline mt-2 inline-block"
+                    >
+                      Resolver
+                    </a>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   )
 }

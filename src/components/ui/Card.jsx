@@ -1,16 +1,12 @@
-import { cn } from '../../lib/utils'
+import { classNames } from '../../lib/utils'
 
-export default function Card({ children, title, className = '', noPadding = false }) {
+export default function Card({ title, children, className }) {
   return (
-    <div className={cn('bg-white border border-[#E5E7EB] rounded-xl shadow-sm', className)}>
+    <div className={classNames('bg-white border border-[#E5E7EB] rounded-xl p-6', className)}>
       {title && (
-        <div className="px-6 py-4 border-b border-[#E5E7EB]">
-          <h3 className="text-base font-semibold text-[#111827]">{title}</h3>
-        </div>
+        <h3 className="text-base font-semibold text-[#111827] mb-4">{title}</h3>
       )}
-      <div className={noPadding ? '' : 'p-6'}>
-        {children}
-      </div>
+      {children}
     </div>
   )
 }

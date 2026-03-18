@@ -1,72 +1,68 @@
 import { useState, useEffect } from 'react'
-import { Users, FileText, DollarSign, Palmtree } from 'lucide-react'
+import { Users, FileText, DollarSign, Briefcase } from 'lucide-react'
 import { apiClient } from '../../api/client'
-import { useEmpresa } from '../../context/EmpresaContext'
+import { formatCLP } from '../../lib/utils'
 import StatCard from '../../components/ui/StatCard'
 import Spinner from '../../components/ui/Spinner'
 import Alert from '../../components/ui/Alert'
 
 export default function EmpresaDashboard() {
-  const { empresaNombre } = useEmpresa()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await apiClient.get('/api/dashboard')
-        if (res.success) {
-          setStats(res.data)
-        } else {
-          setError(res.error || 'Error al cargar datos')
-        }
-      } catch {
-        setError('Error de conexion')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchDashboard()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    )
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get('/api/dashboard')
+      if (result.success) {
+        setStats(result.data.stats)
+      } else {
+        setError(result.error || 'Error al cargar el dashboard')
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
   }
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
+  if (error) return <Alert type="error">{error}</Alert>
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#111827]">{empresaNombre || 'Dashboard'}</h1>
-        <p className="text-[#6B7280] mt-1">Resumen general de tu empresa</p>
-      </div>
+      <h1 className="text-2xl font-bold text-[#111827]">Dashboard</h1>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
+          title="Trabajadores Activos"
+          value={stats?.trabajadoresActivos ?? 0}
           icon={Users}
-          label="Total trabajadores"
-          value={stats?.totalTrabajadores ?? 0}
+          color="blue"
         />
         <StatCard
-          icon={FileText}
-          label="Contratos vigentes"
+          title="Contratos Vigentes"
           value={stats?.contratosVigentes ?? 0}
+          icon={FileText}
+          color="green"
         />
         <StatCard
+          title="Cotizaciones Pendientes"
+          value={stats?.cotizacionesPendientes ?? 0}
           icon={DollarSign}
-          label="Liquidaciones del mes"
-          value={stats?.liquidacionesMes ?? 0}
+          color="yellow"
         />
         <StatCard
-          icon={Palmtree}
-          label="Vacaciones pendientes"
-          value={stats?.vacacionesPendientes ?? 0}
+          title="Total Sueldos"
+          value={formatCLP(stats?.totalSueldos ?? 0)}
+          icon={Briefcase}
+          color="purple"
         />
       </div>
     </div>

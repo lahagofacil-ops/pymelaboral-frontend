@@ -1,20 +1,19 @@
-import { cn } from '../../lib/utils'
+import { classNames } from '../../lib/utils'
 
-const colorMap = {
-  success: 'bg-green-100 text-[#059669]',
-  warning: 'bg-yellow-100 text-[#D97706]',
-  danger: 'bg-red-100 text-[#DC2626]',
-  info: 'bg-blue-100 text-[#2563EB]',
-  neutral: 'bg-gray-100 text-[#6B7280]',
+const variantClasses = {
+  neutral: 'bg-gray-100 text-gray-700',
+  success: 'bg-green-50 text-[#059669]',
+  warning: 'bg-amber-50 text-[#D97706]',
+  danger: 'bg-red-50 text-[#DC2626]',
+  info: 'bg-blue-50 text-[#2563EB]'
 }
 
-export default function Badge({ children, variant = 'neutral', className = '' }) {
+export default function Badge({ children, variant = 'neutral' }) {
   return (
     <span
-      className={cn(
-        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-        colorMap[variant] || colorMap.neutral,
-        className
+      className={classNames(
+        'inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium',
+        variantClasses[variant]
       )}
     >
       {children}

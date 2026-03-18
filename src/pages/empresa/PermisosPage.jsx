@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Check } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Check, X } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatDate } from '../../lib/utils'
+import { TIPO_PERMISO } from '../../lib/constants'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -9,173 +10,175 @@ import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
-const TIPOS_PERMISO = [
-  { value: 'MEDICO', label: 'Permiso medico' },
-  { value: 'PERSONAL', label: 'Permiso personal' },
-  { value: 'LEGAL', label: 'Permiso legal' },
-  { value: 'MATRIMONIO', label: 'Matrimonio' },
-  { value: 'NACIMIENTO', label: 'Nacimiento de hijo' },
-  { value: 'FALLECIMIENTO', label: 'Fallecimiento familiar' },
-  { value: 'OTRO', label: 'Otro' },
-]
+const initialForm = {
+  trabajadorId: '',
+  tipo: '',
+  fecha: '',
+  dias: '1',
+  conGoce: true,
+  observacion: '',
+}
 
 export default function PermisosPage() {
   const [permisos, setPermisos] = useState([])
   const [trabajadores, setTrabajadores] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({
-    trabajadorId: '', tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '',
-  })
+  const [error, setError] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [pRes, tRes] = await Promise.all([
-        apiClient.get('/api/permisos'),
-        apiClient.get('/api/trabajadores'),
-      ])
-      if (pRes.success) setPermisos(pRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+  }, [])
 
-  const handleSave = async () => {
-    setSaving(true)
-    setError('')
+  const fetchData = async () => {
     try {
-      const res = await apiClient.post('/api/permisos', {
-        ...form,
-        dias: Number(form.dias),
-      })
-      if (res.success) {
-        setModalOpen(false)
-        await fetchData()
+      setLoading(true)
+      setError(null)
+      const [permRes, trabRes] = await Promise.all([
+        apiClient.get('/api/permisos'),
+        apiClient.get('/api/trabajadores'),
+      ])
+      if (permRes.success) {
+        setPermisos(permRes.data.permisos || [])
       } else {
-        setError(res.error || 'Error al solicitar')
+        setError(permRes.error || 'Error al cargar permisos')
       }
-    } catch {
-      setError('Error de conexion')
+      if (trabRes.success) {
+        setTrabajadores(Array.isArray(trabRes.data) ? trabRes.data : [])
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      setError(null)
+      const payload = { ...form, dias: Number(form.dias) }
+      const result = await apiClient.post('/api/permisos', payload)
+      if (result.success) {
+        setShowModal(false)
+        setForm(initialForm)
+        fetchData()
+      } else {
+        setError(result.error || 'Error al crear permiso')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleAprobar = async (id) => {
+  const handleUpdateEstado = async (id, estado) => {
     try {
-      const res = await apiClient.put(`/api/permisos/${id}/aprobar`)
-      if (res.success) await fetchData()
-      else setError(res.error || 'Error al aprobar')
-    } catch {
-      setError('Error de conexion')
+      setError(null)
+      const result = await apiClient.put(`/api/permisos/${id}`, { estado })
+      if (result.success) {
+        fetchData()
+      } else {
+        setError(result.error || 'Error al actualizar estado')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     }
   }
 
-  const estadoBadge = (estado) => {
-    const map = { APROBADO: 'success', PENDIENTE: 'warning', RECHAZADO: 'danger' }
-    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
-  }
+  const tipoOptions = Array.isArray(TIPO_PERMISO)
+    ? TIPO_PERMISO.map((t) => ({ value: t, label: t }))
+    : Object.entries(TIPO_PERMISO).map(([value, label]) => ({ value, label }))
 
   const columns = [
     {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
+      header: 'Trabajador',
+      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
+    },
+    { header: 'Tipo', accessor: 'tipo' },
+    {
+      header: 'Fecha',
+      accessor: (row) => formatDate(row.fecha),
+    },
+    { header: 'Días', accessor: 'dias' },
+    {
+      header: 'Con Goce',
+      accessor: (row) => row.conGoce ? 'Sí' : 'No',
     },
     {
-      key: 'tipo',
-      label: 'Tipo',
-      render: (val) => TIPOS_PERMISO.find((t) => t.value === val)?.label || val,
-    },
-    { key: 'fecha', label: 'Fecha', render: (val) => formatDate(val) },
-    { key: 'dias', label: 'Dias' },
-    {
-      key: 'conGoce',
-      label: 'Con goce',
-      render: (val) => (
-        <Badge variant={val ? 'success' : 'neutral'}>{val ? 'Si' : 'No'}</Badge>
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'APROBADO' ? 'success' : row.estado === 'RECHAZADO' ? 'danger' : 'warning'}>
+          {row.estado}
+        </Badge>
       ),
     },
-    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
     {
-      key: 'actions',
-      label: '',
-      render: (_, row) => row.estado === 'PENDIENTE' ? (
-        <button
-          onClick={() => handleAprobar(row.id)}
-          className="p-1.5 rounded-lg text-[#059669] hover:bg-green-50 transition-colors"
-          title="Aprobar"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-      ) : null,
+      header: 'Acciones',
+      accessor: (row) =>
+        row.estado === 'PENDIENTE' ? (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" onClick={() => handleUpdateEstado(row.id, 'APROBADO')}>
+              <Check className="w-4 h-4 text-[#059669]" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleUpdateEstado(row.id, 'RECHAZADO')}>
+              <X className="w-4 h-4 text-[#DC2626]" />
+            </Button>
+          </div>
+        ) : null,
     },
   ]
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Permisos</h1>
-        <Button onClick={() => {
-          setForm({ trabajadorId: '', tipo: '', fecha: '', dias: '1', conGoce: true, observacion: '' })
-          setModalOpen(true)
-        }}>
-          <Plus className="w-4 h-4" />
-          Solicitar permiso
+        <Button onClick={() => { setForm(initialForm); setShowModal(true) }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nuevo Permiso
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <Table columns={columns} data={permisos} loading={loading} emptyMessage="No hay permisos" />
+      <Table columns={columns} data={permisos} emptyMessage="No hay permisos registrados" />
 
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Solicitar permiso"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>Solicitar</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo Permiso">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Trabajador"
+            name="trabajadorId"
             value={form.trabajadorId}
-            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
+            onChange={handleChange}
+            required
             options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
           />
-          <Select
-            label="Tipo de permiso"
-            value={form.tipo}
-            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-            options={TIPOS_PERMISO}
-          />
-          <Input label="Fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
-          <Input label="Dias" type="number" min="1" value={form.dias} onChange={(e) => setForm({ ...form, dias: e.target.value })} />
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.conGoce}
-              onChange={(e) => setForm({ ...form, conGoce: e.target.checked })}
-              className="w-4 h-4 text-[#2563EB] rounded border-[#E5E7EB] focus:ring-[#2563EB]"
-            />
-            <span className="text-sm text-[#111827]">Con goce de sueldo</span>
-          </label>
-          <Input label="Observacion" value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })} />
-        </div>
+          <Select label="Tipo" name="tipo" value={form.tipo} onChange={handleChange} required options={tipoOptions} />
+          <Input label="Fecha" name="fecha" type="date" value={form.fecha} onChange={handleChange} required />
+          <Input label="Días" name="dias" type="number" value={form.dias} onChange={handleChange} required />
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="conGoce" name="conGoce" checked={form.conGoce} onChange={handleChange} className="rounded border-[#E5E7EB]" />
+            <label htmlFor="conGoce" className="text-sm text-[#111827]">Con goce de sueldo</label>
+          </div>
+          <Input label="Observación" name="observacion" value={form.observacion} onChange={handleChange} />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>Enviar Solicitud</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

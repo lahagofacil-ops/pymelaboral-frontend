@@ -1,110 +1,137 @@
 import { useState, useEffect } from 'react'
-import { FileText, Palmtree, DollarSign, Clock, LogIn, LogOut } from 'lucide-react'
+import { Calendar, DollarSign, Clock, FileText, LogIn, LogOut } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
+import { formatCLP } from '../../lib/utils'
 import StatCard from '../../components/ui/StatCard'
+import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import Spinner from '../../components/ui/Spinner'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
 export default function PortalDashboard() {
   const { user } = useAuth()
-  const [stats, setStats] = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
   const [marking, setMarking] = useState(false)
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await apiClient.get('/api/dashboard/worker')
-        if (res.success) {
-          setStats(res.data)
-        } else {
-          setError(res.error || 'Error al cargar datos')
-        }
-      } catch {
-        setError('Error de conexion')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchDashboard()
   }, [])
 
-  const handleMarcarAsistencia = async (tipo) => {
-    setMarking(true)
-    setError('')
+  const fetchDashboard = async () => {
     try {
-      const res = await apiClient.post('/api/asistencia/marcar', { tipo })
-      if (res.success) {
-        alert(`${tipo === 'ENTRADA' ? 'Entrada' : 'Salida'} registrada correctamente`)
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get('/api/dashboard/worker')
+      if (result.success) {
+        setData(result.data)
       } else {
-        setError(res.error || 'Error al marcar asistencia')
+        setError(result.error || 'Error al cargar el dashboard')
       }
-    } catch {
-      setError('Error de conexion')
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMarcar = async (tipo) => {
+    try {
+      setMarking(true)
+      setError(null)
+      const result = await apiClient.post('/api/asistencia/marcar', {
+        trabajadorId: user?.trabajadorId,
+        tipo,
+      })
+      if (result.success) {
+        fetchDashboard()
+      } else {
+        setError(result.error || 'Error al marcar asistencia')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setMarking(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
+  if (error && !data) return <Alert type="error">{error}</Alert>
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#111827]">
-          Hola, {user?.nombre || 'Trabajador'}
+          Hola, {data?.trabajador?.nombre || user?.nombre || 'Trabajador'}
         </h1>
-        <p className="text-[#6B7280] mt-1">Bienvenido a tu portal de trabajador</p>
+        <p className="text-[#6B7280]">
+          {data?.trabajador?.cargo && `${data.trabajador.cargo} · `}
+          {data?.trabajador?.sueldo ? formatCLP(data.trabajador.sueldo) : ''}
+        </p>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard
+          title="Último Líquido"
+          value={data?.ultimaLiquidacion ? formatCLP(data.ultimaLiquidacion.liquido) : '$0'}
           icon={DollarSign}
-          label="Ultima liquidacion"
-          value={stats?.ultimaLiquidacion || '-'}
+          color="blue"
         />
         <StatCard
-          icon={Palmtree}
-          label="Dias vacaciones disponibles"
-          value={stats?.diasVacaciones ?? 0}
+          title="Vacaciones Tomadas"
+          value={`${data?.vacacionesTomadas ?? 0} días`}
+          icon={Calendar}
+          color="green"
         />
         <StatCard
+          title="Solicitudes Pendientes"
+          value={(data?.solicitudesPendientes?.vacaciones ?? 0) + (data?.solicitudesPendientes?.permisos ?? 0)}
           icon={FileText}
-          label="Permisos pendientes"
-          value={stats?.permisosPendientes ?? 0}
-        />
-        <StatCard
-          icon={Clock}
-          label="Asistencia del mes"
-          value={`${stats?.diasTrabajados ?? 0} dias`}
+          color="yellow"
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
-        <h2 className="text-base font-semibold text-[#111827] mb-4">Marcar asistencia</h2>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => handleMarcarAsistencia('ENTRADA')} loading={marking}>
-            <LogIn className="w-4 h-4" />
-            Marcar entrada
+      {data?.ultimaLiquidacion && (
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-[#111827] mb-3">Última Liquidación</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-[#6B7280]">Periodo</p>
+              <p className="font-medium text-[#111827]">{data.ultimaLiquidacion.periodo}</p>
+            </div>
+            <div>
+              <p className="text-[#6B7280]">Total Haberes</p>
+              <p className="font-medium text-[#111827]">{formatCLP(data.ultimaLiquidacion.totalHaberes)}</p>
+            </div>
+            <div>
+              <p className="text-[#6B7280]">Total Descuentos</p>
+              <p className="font-medium text-[#111827]">{formatCLP(data.ultimaLiquidacion.totalDescuentos)}</p>
+            </div>
+            <div>
+              <p className="text-[#6B7280]">Líquido</p>
+              <p className="font-bold text-[#111827]">{formatCLP(data.ultimaLiquidacion.liquido)}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-[#111827] mb-4">Marcar Asistencia</h2>
+        <div className="flex gap-4">
+          <Button onClick={() => handleMarcar('ENTRADA')} loading={marking}>
+            <LogIn className="w-4 h-4 mr-2" />
+            Marcar Entrada
           </Button>
-          <Button variant="outline" onClick={() => handleMarcarAsistencia('SALIDA')} loading={marking}>
-            <LogOut className="w-4 h-4" />
-            Marcar salida
+          <Button onClick={() => handleMarcar('SALIDA')} loading={marking} variant="outline">
+            <LogOut className="w-4 h-4 mr-2" />
+            Marcar Salida
           </Button>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

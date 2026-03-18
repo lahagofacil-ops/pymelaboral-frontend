@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Pencil } from 'lucide-react'
 import { apiClient } from '../../api/client'
-import { formatRut } from '../../lib/utils'
-import { AFP_LIST, SALUD_LIST } from '../../lib/constants'
+import { AFPS } from '../../lib/constants'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -10,204 +9,163 @@ import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
-const emptyForm = {
-  rut: '', nombre: '', apellidoPaterno: '', apellidoMaterno: '',
-  fechaNacimiento: '', sexo: '', nacionalidad: 'Chilena',
-  afp: '', salud: '', fechaIngreso: '',
+const initialForm = {
+  rut: '',
+  nombre: '',
+  apellidoPaterno: '',
+  apellidoMaterno: '',
+  fechaNacimiento: '',
+  sexo: '',
+  nacionalidad: 'Chilena',
+  afp: '',
+  salud: '',
+  fechaIngreso: '',
+  estado: 'ACTIVO',
 }
 
 export default function TrabajadoresPage() {
   const [trabajadores, setTrabajadores] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [form, setForm] = useState(emptyForm)
+  const [error, setError] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
-
-  const fetchTrabajadores = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/api/trabajadores')
-      if (res.success) {
-        setTrabajadores(res.data)
-      } else {
-        setError(res.error || 'Error al cargar trabajadores')
-      }
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
     fetchTrabajadores()
-  }, [fetchTrabajadores])
+  }, [])
 
-  const handleOpenNew = () => {
-    setEditingId(null)
-    setForm(emptyForm)
-    setModalOpen(true)
-  }
-
-  const handleEdit = (t) => {
-    setEditingId(t.id)
-    setForm({
-      rut: t.rut || '',
-      nombre: t.nombre || '',
-      apellidoPaterno: t.apellidoPaterno || '',
-      apellidoMaterno: t.apellidoMaterno || '',
-      fechaNacimiento: t.fechaNacimiento ? t.fechaNacimiento.split('T')[0] : '',
-      sexo: t.sexo || '',
-      nacionalidad: t.nacionalidad || 'Chilena',
-      afp: t.afp || '',
-      salud: t.salud || '',
-      fechaIngreso: t.fechaIngreso ? t.fechaIngreso.split('T')[0] : '',
-    })
-    setModalOpen(true)
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    setError('')
+  const fetchTrabajadores = async () => {
     try {
-      let res
-      if (editingId) {
-        res = await apiClient.put(`/api/trabajadores/${editingId}`, form)
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get('/api/trabajadores')
+      if (result.success) {
+        setTrabajadores(Array.isArray(result.data) ? result.data : [])
       } else {
-        res = await apiClient.post('/api/trabajadores', form)
+        setError(result.error || 'Error al cargar trabajadores')
       }
-      if (res.success) {
-        setModalOpen(false)
-        await fetchTrabajadores()
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openCreate = () => {
+    setEditing(null)
+    setForm(initialForm)
+    setShowModal(true)
+  }
+
+  const openEdit = (trabajador) => {
+    setEditing(trabajador)
+    setForm({
+      rut: trabajador.rut || '',
+      nombre: trabajador.nombre || '',
+      apellidoPaterno: trabajador.apellidoPaterno || '',
+      apellidoMaterno: trabajador.apellidoMaterno || '',
+      fechaNacimiento: trabajador.fechaNacimiento?.split('T')[0] || '',
+      sexo: trabajador.sexo || '',
+      nacionalidad: trabajador.nacionalidad || 'Chilena',
+      afp: trabajador.afp || '',
+      salud: trabajador.salud || '',
+      fechaIngreso: trabajador.fechaIngreso?.split('T')[0] || '',
+      estado: trabajador.estado || 'ACTIVO',
+    })
+    setShowModal(true)
+  }
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      const result = editing
+        ? await apiClient.put(`/api/trabajadores/${editing.id}`, form)
+        : await apiClient.post('/api/trabajadores', form)
+      if (result.success) {
+        setShowModal(false)
+        fetchTrabajadores()
       } else {
-        setError(res.error || 'Error al guardar')
+        setError(result.error || 'Error al guardar')
       }
-    } catch {
-      setError('Error de conexion')
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Eliminar este trabajador?')) return
-    try {
-      const res = await apiClient.delete(`/api/trabajadores/${id}`)
-      if (res.success) {
-        await fetchTrabajadores()
-      } else {
-        setError(res.error || 'Error al eliminar')
-      }
-    } catch {
-      setError('Error de conexion')
-    }
-  }
-
-  const filtered = trabajadores.filter((t) => {
-    const fullName = `${t.nombre} ${t.apellidoPaterno} ${t.apellidoMaterno}`.toLowerCase()
-    return fullName.includes(search.toLowerCase()) || (t.rut || '').includes(search)
-  })
-
   const columns = [
+    { header: 'RUT', accessor: 'rut' },
     {
-      key: 'nombre',
-      label: 'Nombre completo',
-      render: (_, row) => `${row.nombre} ${row.apellidoPaterno} ${row.apellidoMaterno || ''}`.trim(),
+      header: 'Nombre',
+      accessor: (row) => `${row.nombre} ${row.apellidoPaterno}`,
     },
     {
-      key: 'rut',
-      label: 'RUT',
-      render: (val) => formatRut(val),
+      header: 'Cargo',
+      accessor: (row) => row.contratos?.[0]?.cargo || '—',
+    },
+    { header: 'AFP', accessor: 'afp' },
+    {
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'ACTIVO' ? 'success' : 'default'}>
+          {row.estado}
+        </Badge>
+      ),
     },
     {
-      key: 'cargo',
-      label: 'Cargo',
-      render: (_, row) => row.contratoActivo?.cargo || row.cargo || '-',
-    },
-    {
-      key: 'estado',
-      label: 'Estado',
-      render: (val, row) => {
-        const activo = row.activo !== false && row.estado !== 'INACTIVO'
-        return (
-          <Badge variant={activo ? 'success' : 'neutral'}>
-            {activo ? 'Activo' : 'Inactivo'}
-          </Badge>
-        )
-      },
-    },
-    {
-      key: 'actions',
-      label: 'Acciones',
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => handleEdit(row)}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 transition-colors"
-            title="Editar"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(row.id)}
-            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-red-50 transition-colors"
-            title="Eliminar"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+      header: 'Acciones',
+      accessor: (row) => (
+        <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
+          <Pencil className="w-4 h-4" />
+        </Button>
       ),
     },
   ]
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Trabajadores</h1>
-        <Button onClick={handleOpenNew}>
-          <Plus className="w-4 h-4" />
-          Nuevo trabajador
+        <Button onClick={openCreate}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nuevo Trabajador
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <Input
-        icon={Search}
-        placeholder="Buscar por nombre o RUT..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <Table columns={columns} data={trabajadores} emptyMessage="No hay trabajadores registrados" />
 
-      <Table columns={columns} data={filtered} loading={loading} emptyMessage="No hay trabajadores" />
-
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editingId ? 'Editar trabajador' : 'Nuevo trabajador'}
-        size="lg"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>Guardar</Button>
-          </>
-        }
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="RUT" value={form.rut} onChange={(e) => setForm({ ...form, rut: e.target.value })} placeholder="12345678-9" />
-          <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
-          <Input label="Apellido paterno" value={form.apellidoPaterno} onChange={(e) => setForm({ ...form, apellidoPaterno: e.target.value })} required />
-          <Input label="Apellido materno" value={form.apellidoMaterno} onChange={(e) => setForm({ ...form, apellidoMaterno: e.target.value })} />
-          <Input label="Fecha nacimiento" type="date" value={form.fechaNacimiento} onChange={(e) => setForm({ ...form, fechaNacimiento: e.target.value })} />
-          <Select label="Sexo" value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })} options={[{ value: 'M', label: 'Masculino' }, { value: 'F', label: 'Femenino' }]} />
-          <Input label="Nacionalidad" value={form.nacionalidad} onChange={(e) => setForm({ ...form, nacionalidad: e.target.value })} />
-          <Select label="AFP" value={form.afp} onChange={(e) => setForm({ ...form, afp: e.target.value })} options={AFP_LIST.map((a) => ({ value: a, label: a }))} />
-          <Select label="Salud" value={form.salud} onChange={(e) => setForm({ ...form, salud: e.target.value })} options={SALUD_LIST.map((s) => ({ value: s, label: s }))} />
-          <Input label="Fecha ingreso" type="date" value={form.fechaIngreso} onChange={(e) => setForm({ ...form, fechaIngreso: e.target.value })} />
-        </div>
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Editar Trabajador' : 'Nuevo Trabajador'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input label="RUT" name="rut" value={form.rut} onChange={handleChange} required />
+          <Input label="Nombre" name="nombre" value={form.nombre} onChange={handleChange} required />
+          <Input label="Apellido Paterno" name="apellidoPaterno" value={form.apellidoPaterno} onChange={handleChange} required />
+          <Input label="Apellido Materno" name="apellidoMaterno" value={form.apellidoMaterno} onChange={handleChange} />
+          <Input label="Fecha de Nacimiento" name="fechaNacimiento" type="date" value={form.fechaNacimiento} onChange={handleChange} />
+          <Select label="Sexo" name="sexo" value={form.sexo} onChange={handleChange} options={[{ value: 'M', label: 'Masculino' }, { value: 'F', label: 'Femenino' }]} />
+          <Input label="Nacionalidad" name="nacionalidad" value={form.nacionalidad} onChange={handleChange} />
+          <Select label="AFP" name="afp" value={form.afp} onChange={handleChange} options={AFPS.map((a) => ({ value: a, label: a }))} />
+          <Input label="Salud (Isapre/Fonasa)" name="salud" value={form.salud} onChange={handleChange} />
+          <Input label="Fecha de Ingreso" name="fechaIngreso" type="date" value={form.fechaIngreso} onChange={handleChange} required />
+          <Select label="Estado" name="estado" value={form.estado} onChange={handleChange} options={[{ value: 'ACTIVO', label: 'Activo' }, { value: 'INACTIVO', label: 'Inactivo' }, { value: 'DESVINCULADO', label: 'Desvinculado' }]} />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>Guardar</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

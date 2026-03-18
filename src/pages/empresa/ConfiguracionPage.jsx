@@ -1,192 +1,196 @@
 import { useState, useEffect } from 'react'
-import { Save, UserPlus } from 'lucide-react'
+import { Save, Plus, UserPlus } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { REGIONES } from '../../lib/constants'
+import { roleLabel } from '../../lib/utils'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import Modal from '../../components/ui/Modal'
 import Card from '../../components/ui/Card'
 import Table from '../../components/ui/Table'
-import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
 import Spinner from '../../components/ui/Spinner'
-import { roleLabel } from '../../lib/utils'
+
+const initialUserForm = {
+  email: '',
+  nombre: '',
+  role: 'ADMIN',
+}
 
 export default function ConfiguracionPage() {
   const [empresa, setEmpresa] = useState(null)
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({
-    razonSocial: '', rut: '', giro: '', direccion: '', comuna: '', region: '', email: '',
-  })
-  const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteForm, setInviteForm] = useState({ email: '', nombre: '', password: '', role: 'ADMIN' })
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [userForm, setUserForm] = useState(initialUserForm)
+  const [savingUser, setSavingUser] = useState(false)
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [eRes, uRes] = await Promise.all([
-          apiClient.get('/api/empresa'),
-          apiClient.get('/api/empresa/usuarios'),
-        ])
-        if (eRes.success) {
-          setEmpresa(eRes.data)
-          setForm({
-            razonSocial: eRes.data.razonSocial || '',
-            rut: eRes.data.rut || '',
-            giro: eRes.data.giro || '',
-            direccion: eRes.data.direccion || '',
-            comuna: eRes.data.comuna || '',
-            region: eRes.data.region || '',
-            email: eRes.data.email || '',
-          })
-        }
-        if (uRes.success) setUsuarios(uRes.data)
-      } catch {
-        setError('Error de conexion')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchData()
   }, [])
 
-  const handleSave = async () => {
-    setSaving(true)
-    setError('')
-    setSuccess('')
+  const fetchData = async () => {
     try {
-      const res = await apiClient.put('/api/empresa', form)
-      if (res.success) {
-        setSuccess('Configuracion guardada')
-        setEmpresa(res.data)
+      setLoading(true)
+      setError(null)
+      const [empRes, usrRes] = await Promise.all([
+        apiClient.get('/api/empresa'),
+        apiClient.get('/api/empresa/usuarios'),
+      ])
+      if (empRes.success) {
+        setEmpresa(empRes.data)
       } else {
-        setError(res.error || 'Error al guardar')
+        setError(empRes.error || 'Error al cargar datos de empresa')
       }
-    } catch {
-      setError('Error de conexion')
+      if (usrRes.success) {
+        setUsuarios(Array.isArray(usrRes.data) ? usrRes.data : [])
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEmpresaChange = (e) => {
+    setEmpresa({ ...empresa, [e.target.name]: e.target.value })
+  }
+
+  const handleSaveEmpresa = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      setError(null)
+      setSuccess(null)
+      const result = await apiClient.put('/api/empresa', empresa)
+      if (result.success) {
+        setSuccess('Datos de empresa actualizados correctamente')
+      } else {
+        setError(result.error || 'Error al guardar')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleInvite = async () => {
-    setSaving(true)
-    setError('')
+  const handleUserChange = (e) => {
+    setUserForm({ ...userForm, [e.target.name]: e.target.value })
+  }
+
+  const handleInviteUser = async (e) => {
+    e.preventDefault()
     try {
-      const res = await apiClient.post('/api/empresa/usuarios', inviteForm)
-      if (res.success) {
-        setInviteOpen(false)
-        setInviteForm({ email: '', nombre: '', password: '', role: 'ADMIN' })
-        const uRes = await apiClient.get('/api/empresa/usuarios')
-        if (uRes.success) setUsuarios(uRes.data)
+      setSavingUser(true)
+      setError(null)
+      const result = await apiClient.post('/api/empresa/usuarios', userForm)
+      if (result.success) {
+        setShowUserModal(false)
+        setUserForm(initialUserForm)
+        fetchData()
       } else {
-        setError(res.error || 'Error al invitar')
+        setError(result.error || 'Error al invitar usuario')
       }
-    } catch {
-      setError('Error de conexion')
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
-      setSaving(false)
+      setSavingUser(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
+  const regionOptions = Array.isArray(REGIONES)
+    ? REGIONES.map((r) => ({ value: r, label: r }))
+    : Object.entries(REGIONES).map(([value, label]) => ({ value, label }))
 
   const userColumns = [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'email', label: 'Email' },
+    { header: 'Nombre', accessor: 'nombre' },
+    { header: 'Email', accessor: 'email' },
     {
-      key: 'role',
-      label: 'Rol',
-      render: (val) => <Badge variant="info">{roleLabel(val)}</Badge>,
+      header: 'Rol',
+      accessor: (row) => (
+        <Badge variant="default">{roleLabel(row.role)}</Badge>
+      ),
     },
     {
-      key: 'activo',
-      label: 'Estado',
-      render: (val) => <Badge variant={val !== false ? 'success' : 'neutral'}>{val !== false ? 'Activo' : 'Inactivo'}</Badge>,
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.activo ? 'success' : 'default'}>
+          {row.activo ? 'Activo' : 'Inactivo'}
+        </Badge>
+      ),
     },
   ]
 
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#111827]">Configuracion</h1>
+    <div className="space-y-8">
+      <h1 className="text-2xl font-bold text-[#111827]">Configuración</h1>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
-      {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
+      {error && <Alert type="error">{error}</Alert>}
+      {success && <Alert type="success">{success}</Alert>}
 
-      {/* Company Settings */}
-      <Card title="Datos de la empresa">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Razon Social" value={form.razonSocial} onChange={(e) => setForm({ ...form, razonSocial: e.target.value })} />
-          <Input label="RUT" value={form.rut} onChange={(e) => setForm({ ...form, rut: e.target.value })} />
-          <Input label="Giro" value={form.giro} onChange={(e) => setForm({ ...form, giro: e.target.value })} />
-          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <Input label="Direccion" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} />
-          <Input label="Comuna" value={form.comuna} onChange={(e) => setForm({ ...form, comuna: e.target.value })} />
-          <Select
-            label="Region"
-            value={form.region}
-            onChange={(e) => setForm({ ...form, region: e.target.value })}
-            options={REGIONES.map((r) => ({ value: r, label: r }))}
-          />
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button onClick={handleSave} loading={saving}>
-            <Save className="w-4 h-4" />
-            Guardar cambios
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-[#111827] mb-4">Datos de la Empresa</h2>
+        {empresa && (
+          <form onSubmit={handleSaveEmpresa} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input label="Razón Social" name="razonSocial" value={empresa.razonSocial || ''} onChange={handleEmpresaChange} required />
+              <Input label="RUT" name="rut" value={empresa.rut || ''} onChange={handleEmpresaChange} required />
+              <Input label="Giro" name="giro" value={empresa.giro || ''} onChange={handleEmpresaChange} />
+              <Input label="Dirección" name="direccion" value={empresa.direccion || ''} onChange={handleEmpresaChange} />
+              <Input label="Comuna" name="comuna" value={empresa.comuna || ''} onChange={handleEmpresaChange} />
+              <Select label="Región" name="region" value={empresa.region || ''} onChange={handleEmpresaChange} options={regionOptions} />
+              <Input label="Email" name="email" type="email" value={empresa.email || ''} onChange={handleEmpresaChange} />
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button type="submit" loading={saving}>
+                <Save className="w-4 h-4 mr-2" />
+                Guardar Cambios
+              </Button>
+            </div>
+          </form>
+        )}
+      </Card>
+
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-[#111827]">Usuarios</h2>
+          <Button onClick={() => { setUserForm(initialUserForm); setShowUserModal(true) }} size="sm">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Invitar Usuario
           </Button>
         </div>
+
+        <Table columns={userColumns} data={usuarios} emptyMessage="No hay usuarios registrados" />
       </Card>
 
-      {/* Users */}
-      <Card title="Usuarios">
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setInviteOpen(true)}>
-              <UserPlus className="w-4 h-4" />
-              Invitar usuario
-            </Button>
-          </div>
-          <Table columns={userColumns} data={usuarios} emptyMessage="No hay usuarios" />
-        </div>
-      </Card>
-
-      {/* Invite Modal */}
-      <Modal
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        title="Invitar usuario"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
-            <Button onClick={handleInvite} loading={saving}>Invitar</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Input label="Nombre" value={inviteForm.nombre} onChange={(e) => setInviteForm({ ...inviteForm, nombre: e.target.value })} required />
-          <Input label="Email" type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} required />
-          <Input label="Contrasena" type="password" value={inviteForm.password} onChange={(e) => setInviteForm({ ...inviteForm, password: e.target.value })} required />
+      <Modal open={showUserModal} onClose={() => setShowUserModal(false)} title="Invitar Usuario">
+        <form onSubmit={handleInviteUser} className="space-y-4">
+          <Input label="Nombre" name="nombre" value={userForm.nombre} onChange={handleUserChange} required />
+          <Input label="Email" name="email" type="email" value={userForm.email} onChange={handleUserChange} required />
           <Select
             label="Rol"
-            value={inviteForm.role}
-            onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+            name="role"
+            value={userForm.role}
+            onChange={handleUserChange}
             options={[
               { value: 'ADMIN', label: 'Administrador' },
-              { value: 'WORKER', label: 'Trabajador' },
+              { value: 'CONTADOR', label: 'Contador' },
+              { value: 'RRHH', label: 'Recursos Humanos' },
             ]}
           />
-        </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowUserModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={savingUser}>Enviar Invitación</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

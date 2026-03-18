@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Eye } from 'lucide-react'
 import { apiClient } from '../../api/client'
-import { formatCLP, formatDate } from '../../lib/utils'
-import { TIPO_CONTRATO } from '../../lib/constants'
+import { formatCLP } from '../../lib/utils'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -10,177 +9,159 @@ import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
-const emptyForm = {
-  trabajadorId: '', tipo: '', cargo: '', sueldoBase: '',
-  fechaInicio: '', fechaTermino: '', jornadaSemanal: '45',
+const initialForm = {
+  trabajadorId: '',
+  tipo: 'INDEFINIDO',
+  cargo: '',
+  sueldoBase: '',
+  horasSemanales: '45',
+  fechaInicio: '',
+  fechaTermino: '',
 }
 
 export default function ContratosPage() {
   const [contratos, setContratos] = useState([])
   const [trabajadores, setTrabajadores] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [selectedContrato, setSelectedContrato] = useState(null)
-  const [form, setForm] = useState(emptyForm)
+  const [error, setError] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [cRes, tRes] = await Promise.all([
-        apiClient.get('/api/contratos'),
-        apiClient.get('/api/trabajadores'),
-      ])
-      if (cRes.success) setContratos(cRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+  }, [])
 
-  const handleSave = async () => {
-    setSaving(true)
-    setError('')
+  const fetchData = async () => {
     try {
-      const body = { ...form, sueldoBase: Number(form.sueldoBase), jornadaSemanal: Number(form.jornadaSemanal) }
-      const res = await apiClient.post('/api/contratos', body)
-      if (res.success) {
-        setModalOpen(false)
-        setForm(emptyForm)
-        await fetchData()
+      setLoading(true)
+      setError(null)
+      const [contratosRes, trabajadoresRes] = await Promise.all([
+        apiClient.get('/api/contratos'),
+        apiClient.get('/api/trabajadores'),
+      ])
+      if (contratosRes.success) {
+        setContratos(Array.isArray(contratosRes.data) ? contratosRes.data : [])
       } else {
-        setError(res.error || 'Error al crear contrato')
+        setError(contratosRes.error || 'Error al cargar contratos')
       }
-    } catch {
-      setError('Error de conexion')
+      if (trabajadoresRes.success) {
+        setTrabajadores(Array.isArray(trabajadoresRes.data) ? trabajadoresRes.data : [])
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openCreate = () => {
+    setForm(initialForm)
+    setShowModal(true)
+  }
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      const payload = { ...form, sueldoBase: Number(form.sueldoBase), horasSemanales: Number(form.horasSemanales) }
+      const result = await apiClient.post('/api/contratos', payload)
+      if (result.success) {
+        setShowModal(false)
+        fetchData()
+      } else {
+        setError(result.error || 'Error al crear contrato')
+      }
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleViewDetail = async (contrato) => {
-    try {
-      const res = await apiClient.get(`/api/contratos/${contrato.id}`)
-      if (res.success) {
-        setSelectedContrato(res.data)
-        setDetailOpen(true)
-      }
-    } catch {
-      setError('Error al cargar detalle')
-    }
-  }
-
-  const trabajadorName = (id) => {
-    const t = trabajadores.find((x) => x.id === id)
-    return t ? `${t.nombre} ${t.apellidoPaterno}` : '-'
-  }
-
-  const estadoBadge = (estado) => {
-    const map = { VIGENTE: 'success', TERMINADO: 'neutral', PENDIENTE: 'warning' }
-    return <Badge variant={map[estado] || 'neutral'}>{estado || '-'}</Badge>
-  }
-
   const columns = [
     {
-      key: 'trabajadorId',
-      label: 'Trabajador',
-      render: (val, row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : trabajadorName(val),
+      header: 'Trabajador',
+      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
     },
-    { key: 'tipo', label: 'Tipo', render: (val) => TIPO_CONTRATO.find((t) => t.value === val)?.label || val },
-    { key: 'cargo', label: 'Cargo' },
-    { key: 'sueldoBase', label: 'Sueldo Base', render: (val) => formatCLP(val) },
-    { key: 'estado', label: 'Estado', render: (val) => estadoBadge(val) },
-    { key: 'fechaInicio', label: 'Inicio', render: (val) => formatDate(val) },
+    { header: 'Tipo', accessor: 'tipo' },
+    { header: 'Cargo', accessor: 'cargo' },
     {
-      key: 'actions',
-      label: '',
-      render: (_, row) => (
-        <button
-          onClick={() => handleViewDetail(row)}
-          className="p-1.5 rounded-lg text-[#2563EB] hover:bg-blue-50 transition-colors"
-          title="Ver detalle"
-        >
+      header: 'Sueldo Base',
+      accessor: (row) => formatCLP(row.sueldoBase),
+    },
+    { header: 'Horas Semanales', accessor: 'horasSemanales' },
+    {
+      header: 'Estado',
+      accessor: (row) => (
+        <Badge variant={row.estado === 'VIGENTE' ? 'success' : 'default'}>
+          {row.estado}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Acciones',
+      accessor: (row) => (
+        <Button variant="ghost" size="sm">
           <Eye className="w-4 h-4" />
-        </button>
+        </Button>
       ),
     },
   ]
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Contratos</h1>
-        <Button onClick={() => { setForm(emptyForm); setModalOpen(true) }}>
-          <Plus className="w-4 h-4" />
-          Nuevo contrato
+        <Button onClick={openCreate}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nuevo Contrato
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <Table columns={columns} data={contratos} loading={loading} emptyMessage="No hay contratos" />
+      <Table columns={columns} data={contratos} emptyMessage="No hay contratos registrados" />
 
-      {/* New Contract Modal */}
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Nuevo contrato"
-        size="lg"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>Crear</Button>
-          </>
-        }
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo Contrato">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Trabajador"
+            name="trabajadorId"
             value={form.trabajadorId}
-            onChange={(e) => setForm({ ...form, trabajadorId: e.target.value })}
+            onChange={handleChange}
+            required
             options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
           />
           <Select
             label="Tipo"
+            name="tipo"
             value={form.tipo}
-            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-            options={TIPO_CONTRATO}
+            onChange={handleChange}
+            options={[
+              { value: 'INDEFINIDO', label: 'Indefinido' },
+              { value: 'PLAZO_FIJO', label: 'Plazo Fijo' },
+              { value: 'POR_OBRA', label: 'Por Obra o Faena' },
+            ]}
           />
-          <Input label="Cargo" value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} />
-          <Input label="Sueldo base" type="number" value={form.sueldoBase} onChange={(e) => setForm({ ...form, sueldoBase: e.target.value })} />
-          <Input label="Fecha inicio" type="date" value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
-          <Input label="Fecha termino" type="date" value={form.fechaTermino} onChange={(e) => setForm({ ...form, fechaTermino: e.target.value })} />
-          <Input label="Jornada semanal (hrs)" type="number" value={form.jornadaSemanal} onChange={(e) => setForm({ ...form, jornadaSemanal: e.target.value })} />
-        </div>
-      </Modal>
-
-      {/* Detail Modal */}
-      <Modal
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title="Detalle del contrato"
-        size="lg"
-      >
-        {selectedContrato && (
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-[#6B7280]">Trabajador:</span> <span className="font-medium text-[#111827]">{selectedContrato.trabajador ? `${selectedContrato.trabajador.nombre} ${selectedContrato.trabajador.apellidoPaterno}` : '-'}</span></div>
-            <div><span className="text-[#6B7280]">Tipo:</span> <span className="font-medium text-[#111827]">{TIPO_CONTRATO.find((t) => t.value === selectedContrato.tipo)?.label || selectedContrato.tipo}</span></div>
-            <div><span className="text-[#6B7280]">Cargo:</span> <span className="font-medium text-[#111827]">{selectedContrato.cargo}</span></div>
-            <div><span className="text-[#6B7280]">Sueldo base:</span> <span className="font-medium text-[#111827]">{formatCLP(selectedContrato.sueldoBase)}</span></div>
-            <div><span className="text-[#6B7280]">Inicio:</span> <span className="font-medium text-[#111827]">{formatDate(selectedContrato.fechaInicio)}</span></div>
-            <div><span className="text-[#6B7280]">Termino:</span> <span className="font-medium text-[#111827]">{formatDate(selectedContrato.fechaTermino) || 'Indefinido'}</span></div>
-            <div><span className="text-[#6B7280]">Estado:</span> {estadoBadge(selectedContrato.estado)}</div>
-            <div><span className="text-[#6B7280]">Jornada:</span> <span className="font-medium text-[#111827]">{selectedContrato.jornadaSemanal} hrs/semana</span></div>
+          <Input label="Cargo" name="cargo" value={form.cargo} onChange={handleChange} required />
+          <Input label="Sueldo Base" name="sueldoBase" type="number" value={form.sueldoBase} onChange={handleChange} required />
+          <Input label="Horas Semanales" name="horasSemanales" type="number" value={form.horasSemanales} onChange={handleChange} />
+          <Input label="Fecha Inicio" name="fechaInicio" type="date" value={form.fechaInicio} onChange={handleChange} required />
+          <Input label="Fecha Término" name="fechaTermino" type="date" value={form.fechaTermino} onChange={handleChange} />
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>Crear Contrato</Button>
           </div>
-        )}
+        </form>
       </Modal>
     </div>
   )

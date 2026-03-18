@@ -1,23 +1,25 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import ProtectedRoute from './components/ProtectedRoute'
+import { useAuth } from './context/AuthContext'
+import ProtectedRoute from './layouts/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
 import EmpresaLayout from './layouts/EmpresaLayout'
 import PortalLayout from './layouts/PortalLayout'
 import SupervisorLayout from './layouts/SupervisorLayout'
+import Spinner from './components/ui/Spinner'
 
-// Public pages
+// Public
 import LandingPage from './pages/public/LandingPage'
 import LoginPage from './pages/public/LoginPage'
 
-// Admin pages
+// Admin
 import AdminDashboard from './pages/admin/AdminDashboard'
 import EmpresasPage from './pages/admin/EmpresasPage'
 import SupervisorasPage from './pages/admin/SupervisorasPage'
 
-// Supervisor pages
+// Supervisor
 import SupervisorDashboard from './pages/supervisor/SupervisorDashboard'
 
-// Empresa pages
+// Empresa
 import EmpresaDashboard from './pages/empresa/EmpresaDashboard'
 import TrabajadoresPage from './pages/empresa/TrabajadoresPage'
 import ContratosPage from './pages/empresa/ContratosPage'
@@ -28,73 +30,87 @@ import VacacionesPage from './pages/empresa/VacacionesPage'
 import PermisosPage from './pages/empresa/PermisosPage'
 import FiniquitosPage from './pages/empresa/FiniquitosPage'
 import KarinPage from './pages/empresa/KarinPage'
-import DocumentosPage from './pages/empresa/DocumentosPage'
 import CompliancePage from './pages/empresa/CompliancePage'
+import DocumentosPage from './pages/empresa/DocumentosPage'
 import ConfiguracionPage from './pages/empresa/ConfiguracionPage'
-import ChatPage from './pages/empresa/ChatPage'
 
-// Portal pages
+// Portal
 import PortalDashboard from './pages/portal/PortalDashboard'
 import PortalLiquidaciones from './pages/portal/PortalLiquidaciones'
-import PortalAsistencia from './pages/portal/PortalAsistencia'
 import PortalVacaciones from './pages/portal/PortalVacaciones'
 import PortalPermisos from './pages/portal/PortalPermisos'
 
 export default function App() {
+  const { loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Admin routes - SUPER_ADMIN only */}
-      <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
-        <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/empresas" element={<EmpresasPage />} />
-          <Route path="/admin/supervisoras" element={<SupervisorasPage />} />
-        </Route>
+      {/* Admin */}
+      <Route path="/admin" element={
+        <ProtectedRoute roles={['SUPER_ADMIN']}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<AdminDashboard />} />
+        <Route path="empresas" element={<EmpresasPage />} />
+        <Route path="supervisoras" element={<SupervisorasPage />} />
       </Route>
 
-      {/* Supervisor routes - SUPERVISOR only */}
-      <Route element={<ProtectedRoute allowedRoles={['SUPERVISOR']} />}>
-        <Route element={<SupervisorLayout />}>
-          <Route path="/supervisor" element={<SupervisorDashboard />} />
-        </Route>
+      {/* Supervisor */}
+      <Route path="/supervisor" element={
+        <ProtectedRoute roles={['SUPERVISOR']}>
+          <SupervisorLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<SupervisorDashboard />} />
       </Route>
 
-      {/* Empresa routes - OWNER, ADMIN, or impersonating SUPER_ADMIN/SUPERVISOR */}
-      <Route element={<ProtectedRoute allowedRoles={['OWNER', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISOR']} />}>
-        <Route element={<EmpresaLayout />}>
-          <Route path="/empresa" element={<EmpresaDashboard />} />
-          <Route path="/empresa/trabajadores" element={<TrabajadoresPage />} />
-          <Route path="/empresa/contratos" element={<ContratosPage />} />
-          <Route path="/empresa/liquidaciones" element={<LiquidacionesPage />} />
-          <Route path="/empresa/cotizaciones" element={<CotizacionesPage />} />
-          <Route path="/empresa/asistencia" element={<AsistenciaPage />} />
-          <Route path="/empresa/vacaciones" element={<VacacionesPage />} />
-          <Route path="/empresa/permisos" element={<PermisosPage />} />
-          <Route path="/empresa/finiquitos" element={<FiniquitosPage />} />
-          <Route path="/empresa/karin" element={<KarinPage />} />
-          <Route path="/empresa/documentos" element={<DocumentosPage />} />
-          <Route path="/empresa/compliance" element={<CompliancePage />} />
-          <Route path="/empresa/configuracion" element={<ConfiguracionPage />} />
-          <Route path="/empresa/chat" element={<ChatPage />} />
-        </Route>
+      {/* Empresa */}
+      <Route path="/empresa" element={
+        <ProtectedRoute roles={['SUPER_ADMIN', 'SUPERVISOR', 'OWNER', 'ADMIN']}>
+          <EmpresaLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<EmpresaDashboard />} />
+        <Route path="trabajadores" element={<TrabajadoresPage />} />
+        <Route path="contratos" element={<ContratosPage />} />
+        <Route path="liquidaciones" element={<LiquidacionesPage />} />
+        <Route path="cotizaciones" element={<CotizacionesPage />} />
+        <Route path="asistencia" element={<AsistenciaPage />} />
+        <Route path="vacaciones" element={<VacacionesPage />} />
+        <Route path="permisos" element={<PermisosPage />} />
+        <Route path="finiquitos" element={<FiniquitosPage />} />
+        <Route path="karin" element={<KarinPage />} />
+        <Route path="compliance" element={<CompliancePage />} />
+        <Route path="documentos" element={<DocumentosPage />} />
+        <Route path="configuracion" element={<ConfiguracionPage />} />
       </Route>
 
-      {/* Portal routes - WORKER only */}
-      <Route element={<ProtectedRoute allowedRoles={['WORKER']} />}>
-        <Route element={<PortalLayout />}>
-          <Route path="/portal" element={<PortalDashboard />} />
-          <Route path="/portal/liquidaciones" element={<PortalLiquidaciones />} />
-          <Route path="/portal/asistencia" element={<PortalAsistencia />} />
-          <Route path="/portal/vacaciones" element={<PortalVacaciones />} />
-          <Route path="/portal/permisos" element={<PortalPermisos />} />
-        </Route>
+      {/* Portal */}
+      <Route path="/portal" element={
+        <ProtectedRoute roles={['WORKER']}>
+          <PortalLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<PortalDashboard />} />
+        <Route path="liquidaciones" element={<PortalLiquidaciones />} />
+        <Route path="vacaciones" element={<PortalVacaciones />} />
+        <Route path="permisos" element={<PortalPermisos />} />
       </Route>
 
-      {/* Catch-all redirect */}
+      {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

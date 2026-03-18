@@ -1,21 +1,11 @@
-import { Loader2 } from 'lucide-react'
-import { cn } from '../../lib/utils'
+const sizes = {
+  sm: 'w-5 h-5 border-2',
+  md: 'w-8 h-8 border-3',
+  lg: 'w-12 h-12 border-4'
+}
 
-export default function Spinner({ size = 'md', className = '' }) {
-  const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-6 h-6',
-    lg: 'w-8 h-8',
-    xl: 'w-12 h-12',
-  }
-
+export default function Spinner({ size = 'md' }) {
   return (
-    <Loader2
-      className={cn(
-        'animate-spin text-[#2563EB]',
-        sizeClasses[size] || sizeClasses.md,
-        className
-      )}
-    />
+    <div className={`${sizes[size] || sizes.md} border-[#2563EB] border-t-transparent rounded-full animate-spin`} />
   )
 }

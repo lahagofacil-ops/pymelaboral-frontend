@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Building2, Users, Briefcase, MessageSquare, Plus } from 'lucide-react'
+import { Building2, Users, Briefcase, MessageSquare } from 'lucide-react'
 import { apiClient } from '../../api/client'
-import StatCard from '../../components/ui/StatCard'
-import Button from '../../components/ui/Button'
-import Spinner from '../../components/ui/Spinner'
-import Alert from '../../components/ui/Alert'
+
+function StatCard({ icon: Icon, label, value, color }) {
+  return (
+    <div className="bg-white rounded-lg border border-[#E5E7EB] p-6 flex items-center gap-4">
+      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${color}`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <div>
+        <p className="text-sm text-[#6B7280]">{label}</p>
+        <p className="text-2xl font-bold text-[#111827]">{value}</p>
+      </div>
+    </div>
+  )
+}
 
 export default function AdminDashboard() {
-  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -20,10 +28,10 @@ export default function AdminDashboard() {
         if (res.success) {
           setStats(res.data)
         } else {
-          setError(res.error || 'Error al cargar estadisticas')
+          setError(res.error || 'Error al cargar estadísticas')
         }
       } catch {
-        setError('Error de conexion')
+        setError('Error de conexión')
       } finally {
         setLoading(false)
       }
@@ -33,52 +41,48 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-[#DC2626] rounded-lg p-4">
+        {error}
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#111827]">Panel de Administracion</h1>
-      </div>
-
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div>
+      <h1 className="text-2xl font-bold text-[#111827] mb-6">Dashboard</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           icon={Building2}
-          label="Total empresas"
-          value={stats?.totalEmpresas ?? 0}
+          label="Empresas"
+          value={stats?.empresas ?? 0}
+          color="bg-[#2563EB]"
         />
         <StatCard
           icon={Users}
-          label="Total usuarios"
-          value={stats?.totalUsers ?? 0}
+          label="Usuarios"
+          value={stats?.usuarios ?? 0}
+          color="bg-[#1E40AF]"
         />
         <StatCard
           icon={Briefcase}
-          label="Total trabajadores"
-          value={stats?.totalTrabajadores ?? 0}
+          label="Trabajadores"
+          value={stats?.trabajadores ?? 0}
+          color="bg-[#059669]"
         />
         <StatCard
           icon={MessageSquare}
-          label="Mensajes chat hoy"
-          value={stats?.chatMessagesToday ?? 0}
+          label="Consultas IA Hoy"
+          value={stats?.consultasIAHoy ?? 0}
+          color="bg-[#D97706]"
         />
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Button onClick={() => navigate('/admin/empresas')}>
-          <Plus className="w-4 h-4" />
-          Nueva empresa
-        </Button>
-        <Button variant="outline" onClick={() => navigate('/admin/supervisoras')}>
-          <Plus className="w-4 h-4" />
-          Nueva supervisora
-        </Button>
       </div>
     </div>
   )

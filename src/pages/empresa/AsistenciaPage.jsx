@@ -1,87 +1,127 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Clock, BarChart3, LogIn, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Clock, LogIn, LogOut } from 'lucide-react'
 import { apiClient } from '../../api/client'
-import { formatDate } from '../../lib/utils'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
-import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
-import Alert from '../../components/ui/Alert'
 import Card from '../../components/ui/Card'
+import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
 export default function AsistenciaPage() {
   const [registros, setRegistros] = useState([])
-  const [resumen, setResumen] = useState(null)
+  const [resumen, setResumen] = useState([])
   const [trabajadores, setTrabajadores] = useState([])
+  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [selectedTrabajador, setSelectedTrabajador] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [fecha, setFecha] = useState(() => new Date().toISOString().split('T')[0])
-  const [modalOpen, setModalOpen] = useState(false)
-  const [markForm, setMarkForm] = useState({ trabajadorId: '', tipo: 'ENTRADA' })
-  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const [marking, setMarking] = useState(false)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [aRes, rRes, tRes] = await Promise.all([
-        apiClient.get(`/api/asistencia?fecha=${fecha}`),
-        apiClient.get(`/api/asistencia/resumen?fecha=${fecha}`),
-        apiClient.get('/api/trabajadores'),
-      ])
-      if (aRes.success) setRegistros(aRes.data)
-      if (rRes.success) setResumen(rRes.data)
-      if (tRes.success) setTrabajadores(tRes.data)
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    fetchTrabajadores()
+  }, [])
+
+  useEffect(() => {
+    if (fecha) {
+      fetchAsistencia()
+      fetchResumen()
     }
   }, [fecha])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  const handleMarcar = async () => {
-    setSaving(true)
-    setError('')
+  const fetchTrabajadores = async () => {
     try {
-      const res = await apiClient.post('/api/asistencia/marcar', {
-        trabajadorId: markForm.trabajadorId,
-        tipo: markForm.tipo,
-      })
-      if (res.success) {
-        setModalOpen(false)
-        await fetchData()
-      } else {
-        setError(res.error || 'Error al marcar')
+      const result = await apiClient.get('/api/trabajadores')
+      if (result.success) {
+        setTrabajadores(Array.isArray(result.data) ? result.data : [])
       }
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setSaving(false)
+    } catch (err) {
+      // silent
     }
+  }
+
+  const fetchAsistencia = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get(`/api/asistencia?fecha=${fecha}`)
+      if (result.success) {
+        setRegistros(result.data.registros || [])
+      } else {
+        setError(result.error || 'Error al cargar asistencia')
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchResumen = async () => {
+    try {
+      const result = await apiClient.get(`/api/asistencia/resumen?fecha=${fecha}`)
+      if (result.success) {
+        setResumen(Array.isArray(result.data.resumen) ? result.data.resumen : [])
+      }
+    } catch (err) {
+      // silent
+    }
+  }
+
+  const handleMarcar = async (tipo) => {
+    if (!selectedTrabajador) {
+      setError('Seleccione un trabajador')
+      return
+    }
+    try {
+      setMarking(true)
+      setError(null)
+      const result = await apiClient.post('/api/asistencia/marcar', {
+        trabajadorId: selectedTrabajador,
+        tipo,
+      })
+      if (result.success) {
+        fetchAsistencia()
+        fetchResumen()
+      } else {
+        setError(result.error || 'Error al marcar asistencia')
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setMarking(false)
+    }
+  }
+
+  const formatTime = (datetime) => {
+    if (!datetime) return '—'
+    const date = new Date(datetime)
+    return date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
   }
 
   const columns = [
     {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
+      header: 'Trabajador',
+      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
     },
-    { key: 'fecha', label: 'Fecha', render: (val) => formatDate(val) },
-    { key: 'entrada', label: 'Entrada' },
-    { key: 'salida', label: 'Salida' },
-    { key: 'horasOrdinarias', label: 'Hrs. Ordinarias' },
-    { key: 'horasExtra', label: 'Hrs. Extra' },
+    { header: 'Fecha', accessor: 'fecha' },
     {
-      key: 'tipoDia',
-      label: 'Tipo Dia',
-      render: (val) => (
-        <Badge variant={val === 'NORMAL' ? 'neutral' : val === 'FERIADO' ? 'warning' : 'info'}>
-          {val || 'Normal'}
+      header: 'Entrada',
+      accessor: (row) => formatTime(row.entrada),
+    },
+    {
+      header: 'Salida',
+      accessor: (row) => formatTime(row.salida),
+    },
+    { header: 'Horas Ordinarias', accessor: 'horasOrdinarias' },
+    { header: 'Horas Extra', accessor: 'horasExtra' },
+    {
+      header: 'Tipo Día',
+      accessor: (row) => (
+        <Badge variant={row.tipoDia === 'NORMAL' ? 'default' : row.tipoDia === 'FERIADO' ? 'warning' : 'info'}>
+          {row.tipoDia}
         </Badge>
       ),
     },
@@ -89,71 +129,74 @@ export default function AsistenciaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#111827]">Asistencia</h1>
-        <Button onClick={() => { setMarkForm({ trabajadorId: '', tipo: 'ENTRADA' }); setModalOpen(true) }}>
-          <Clock className="w-4 h-4" />
-          Marcar asistencia
-        </Button>
-      </div>
+      <h1 className="text-2xl font-bold text-[#111827]">Asistencia</h1>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <div className="flex items-center gap-3">
-        <Input
-          label="Fecha"
-          type="date"
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
-          className="w-48"
-        />
-      </div>
-
-      {resumen && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <p className="text-sm text-[#6B7280]">Presentes</p>
-            <p className="text-lg font-bold text-[#111827]">{resumen.presentes ?? 0}</p>
-          </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Ausentes</p>
-            <p className="text-lg font-bold text-[#111827]">{resumen.ausentes ?? 0}</p>
-          </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Horas extra</p>
-            <p className="text-lg font-bold text-[#111827]">{resumen.horasExtra ?? 0}</p>
-          </Card>
-        </div>
-      )}
-
-      <Table columns={columns} data={registros} loading={loading} emptyMessage="Sin registros para esta fecha" />
-
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Marcar asistencia"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleMarcar} loading={saving}>Marcar</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <Input
+            label="Fecha"
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="w-48"
+          />
           <Select
             label="Trabajador"
-            value={markForm.trabajadorId}
-            onChange={(e) => setMarkForm({ ...markForm, trabajadorId: e.target.value })}
+            name="trabajador"
+            value={selectedTrabajador}
+            onChange={(e) => setSelectedTrabajador(e.target.value)}
             options={trabajadores.map((t) => ({ value: t.id, label: `${t.nombre} ${t.apellidoPaterno}` }))}
+            placeholder="Seleccionar trabajador"
+            className="w-64"
           />
-          <Select
-            label="Tipo"
-            value={markForm.tipo}
-            onChange={(e) => setMarkForm({ ...markForm, tipo: e.target.value })}
-            options={[{ value: 'ENTRADA', label: 'Entrada' }, { value: 'SALIDA', label: 'Salida' }]}
-          />
+          <Button onClick={() => handleMarcar('ENTRADA')} loading={marking} variant="outline">
+            <LogIn className="w-4 h-4 mr-2" />
+            Marcar Entrada
+          </Button>
+          <Button onClick={() => handleMarcar('SALIDA')} loading={marking} variant="outline">
+            <LogOut className="w-4 h-4 mr-2" />
+            Marcar Salida
+          </Button>
         </div>
-      </Modal>
+      </Card>
+
+      {resumen.length > 0 && (
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold text-[#111827] mb-3">Resumen del Periodo</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#E5E7EB]">
+                  <th className="text-left py-2 text-[#6B7280]">Trabajador</th>
+                  <th className="text-right py-2 text-[#6B7280]">Días Trabajados</th>
+                  <th className="text-right py-2 text-[#6B7280]">Horas Ordinarias</th>
+                  <th className="text-right py-2 text-[#6B7280]">Horas Extra</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumen.map((item, i) => (
+                  <tr key={i} className="border-b border-[#E5E7EB]">
+                    <td className="py-2 text-[#111827]">
+                      {item.trabajador?.nombre} {item.trabajador?.apellidoPaterno}
+                    </td>
+                    <td className="py-2 text-right text-[#111827]">{item.diasTrabajados}</td>
+                    <td className="py-2 text-right text-[#111827]">{item.horasOrdinarias}</td>
+                    <td className="py-2 text-right text-[#111827]">{item.horasExtra}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner /></div>
+      ) : (
+        <Table columns={columns} data={registros} emptyMessage="No hay registros de asistencia para esta fecha" />
+      )}
     </div>
   )
 }

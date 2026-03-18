@@ -1,107 +1,131 @@
-import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, CheckCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { DollarSign, Plus, CheckCircle } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatCLP } from '../../lib/utils'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
-import Alert from '../../components/ui/Alert'
 import Card from '../../components/ui/Card'
+import Alert from '../../components/ui/Alert'
+import Spinner from '../../components/ui/Spinner'
 
 export default function CotizacionesPage() {
   const [cotizaciones, setCotizaciones] = useState([])
   const [resumen, setResumen] = useState(null)
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, pages: 1 })
+  const [periodo, setPeriodo] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [periodo, setPeriodo] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [error, setError] = useState(null)
+  const [generating, setGenerating] = useState(false)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [cRes, rRes] = await Promise.all([
-        apiClient.get(`/api/cotizaciones?periodo=${periodo}`),
-        apiClient.get(`/api/cotizaciones/resumen?periodo=${periodo}`),
-      ])
-      if (cRes.success) setCotizaciones(cRes.data)
-      if (rRes.success) setResumen(rRes.data)
-    } catch {
-      setError('Error de conexion')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    if (periodo) {
+      fetchCotizaciones()
+      fetchResumen()
     }
   }, [periodo])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  const fetchCotizaciones = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.get(`/api/cotizaciones?periodo=${periodo}`)
+      if (result.success) {
+        setCotizaciones(result.data.cotizaciones || [])
+        if (result.data.pagination) setPagination(result.data.pagination)
+      } else {
+        setError(result.error || 'Error al cargar cotizaciones')
+      }
+    } catch (err) {
+      setError('Error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchResumen = async () => {
+    try {
+      const result = await apiClient.get(`/api/cotizaciones/resumen?periodo=${periodo}`)
+      if (result.success) {
+        setResumen(result.data)
+      }
+    } catch (err) {
+      // silent
+    }
+  }
 
   const handleGenerar = async () => {
-    setSaving(true)
-    setError('')
+    if (!periodo) {
+      setError('Seleccione un periodo')
+      return
+    }
     try {
-      const res = await apiClient.post('/api/cotizaciones/generar', { periodo })
-      if (res.success) {
-        await fetchData()
+      setGenerating(true)
+      setError(null)
+      const result = await apiClient.post('/api/cotizaciones/generar', { periodo })
+      if (result.success) {
+        fetchCotizaciones()
+        fetchResumen()
       } else {
-        setError(res.error || 'Error al generar')
+        setError(result.error || 'Error al generar cotizaciones')
       }
-    } catch {
-      setError('Error de conexion')
+    } catch (err) {
+      setError('Error de conexión')
     } finally {
-      setSaving(false)
+      setGenerating(false)
     }
   }
 
   const handleMarcarPagada = async (id) => {
     try {
-      const res = await apiClient.put(`/api/cotizaciones/${id}/marcar-pagada`)
-      if (res.success) {
-        await fetchData()
+      const result = await apiClient.put(`/api/cotizaciones/${id}/marcar-pagada`)
+      if (result.success) {
+        fetchCotizaciones()
+        fetchResumen()
       } else {
-        setError(res.error || 'Error al marcar')
+        setError(result.error || 'Error al marcar como pagada')
       }
-    } catch {
-      setError('Error de conexion')
+    } catch (err) {
+      setError('Error de conexión')
     }
   }
 
   const columns = [
     {
-      key: 'trabajador',
-      label: 'Trabajador',
-      render: (val) => val ? `${val.nombre} ${val.apellidoPaterno}` : '-',
+      header: 'Trabajador',
+      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
     },
-    { key: 'periodo', label: 'Periodo' },
-    { key: 'rentaImponible', label: 'Renta Imponible', render: (val) => formatCLP(val) },
-    { key: 'afp', label: 'AFP', render: (val) => formatCLP(val) },
-    { key: 'salud', label: 'Salud', render: (val) => formatCLP(val) },
-    { key: 'cesantia', label: 'Cesantia', render: (val) => formatCLP(val) },
+    { header: 'Periodo', accessor: 'periodo' },
     {
-      key: 'estado',
-      label: 'Previred',
-      render: (val) => (
-        <Badge variant={val === 'PAGADA' ? 'success' : val === 'PENDIENTE' ? 'warning' : 'neutral'}>
-          {val || 'Pendiente'}
+      header: 'Renta Imponible',
+      accessor: (row) => formatCLP(row.rentaImponible),
+    },
+    {
+      header: 'AFP Trabajador',
+      accessor: (row) => formatCLP(row.afpTrabajador),
+    },
+    {
+      header: 'Salud',
+      accessor: (row) => formatCLP(row.salud),
+    },
+    {
+      header: 'Estado Previred',
+      accessor: (row) => (
+        <Badge variant={row.estadoPrevired === 'PAGADA' ? 'success' : row.estadoPrevired === 'PENDIENTE' ? 'warning' : 'default'}>
+          {row.estadoPrevired}
         </Badge>
       ),
     },
     {
-      key: 'actions',
-      label: '',
-      render: (_, row) => row.estado !== 'PAGADA' ? (
-        <button
-          onClick={() => handleMarcarPagada(row.id)}
-          className="p-1.5 rounded-lg text-[#059669] hover:bg-green-50 transition-colors"
-          title="Marcar pagada"
-        >
-          <CheckCircle className="w-4 h-4" />
-        </button>
-      ) : null,
+      header: 'Acciones',
+      accessor: (row) =>
+        row.estadoPrevired !== 'PAGADA' ? (
+          <Button variant="ghost" size="sm" onClick={() => handleMarcarPagada(row.id)}>
+            <CheckCircle className="w-4 h-4 mr-1" />
+            Pagada
+          </Button>
+        ) : null,
     },
   ]
 
@@ -109,15 +133,15 @@ export default function CotizacionesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#111827]">Cotizaciones Previsionales</h1>
-        <Button onClick={handleGenerar} loading={saving}>
-          <RefreshCw className="w-4 h-4" />
-          Generar cotizaciones
+        <Button onClick={handleGenerar} loading={generating}>
+          <Plus className="w-4 h-4 mr-2" />
+          Generar Cotizaciones
         </Button>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && <Alert type="error">{error}</Alert>}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Input
           label="Periodo"
           type="month"
@@ -127,28 +151,50 @@ export default function CotizacionesPage() {
         />
       </div>
 
-      {resumen && (
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <Card>
-            <p className="text-sm text-[#6B7280]">Total AFP</p>
-            <p className="text-lg font-bold text-[#111827]">{formatCLP(resumen.totalAfp)}</p>
+      {resumen?.totales && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <Card className="p-4 text-center">
+            <p className="text-xs text-[#6B7280]">AFP Trabajador</p>
+            <p className="font-semibold text-[#111827]">{formatCLP(resumen.totales.afpTrabajador)}</p>
           </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Total Salud</p>
-            <p className="text-lg font-bold text-[#111827]">{formatCLP(resumen.totalSalud)}</p>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-[#6B7280]">Salud</p>
+            <p className="font-semibold text-[#111827]">{formatCLP(resumen.totales.salud)}</p>
           </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Total Cesantia</p>
-            <p className="text-lg font-bold text-[#111827]">{formatCLP(resumen.totalCesantia)}</p>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-[#6B7280]">Cesantía Trab.</p>
+            <p className="font-semibold text-[#111827]">{formatCLP(resumen.totales.cesantiaTrab)}</p>
           </Card>
-          <Card>
-            <p className="text-sm text-[#6B7280]">Total General</p>
-            <p className="text-lg font-bold text-[#111827]">{formatCLP(resumen.total)}</p>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-[#6B7280]">Cesantía Emp.</p>
+            <p className="font-semibold text-[#111827]">{formatCLP(resumen.totales.cesantiaEmp)}</p>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-[#6B7280]">SIS</p>
+            <p className="font-semibold text-[#111827]">{formatCLP(resumen.totales.sis)}</p>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-xs text-[#6B7280]">Mutual</p>
+            <p className="font-semibold text-[#111827]">{formatCLP(resumen.totales.mutual)}</p>
           </Card>
         </div>
       )}
 
-      <Table columns={columns} data={cotizaciones} loading={loading} emptyMessage="No hay cotizaciones para este periodo" />
+      {resumen && (
+        <div className="flex gap-4 text-sm text-[#6B7280]">
+          <span>Total: {resumen.cantidad}</span>
+          <span>Pendientes: {resumen.pendientes}</span>
+          <span>Pagadas: {resumen.pagadas}</span>
+        </div>
+      )}
+
+      {!periodo ? (
+        <p className="text-center text-[#6B7280] py-8">Seleccione un periodo para ver cotizaciones</p>
+      ) : loading ? (
+        <div className="flex justify-center py-12"><Spinner /></div>
+      ) : (
+        <Table columns={columns} data={cotizaciones} emptyMessage="No hay cotizaciones para este periodo" />
+      )}
     </div>
   )
 }

@@ -1,49 +1,42 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageSquare, X, Send, Loader2 } from 'lucide-react'
-import { post } from '../api/client'
+import { MessageSquare, X, Send } from 'lucide-react'
+import { apiClient } from '../api/client'
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hola, soy tu asistente laboral con IA. ¿En qué puedo ayudarte?' },
+    { role: 'bot', text: 'Hola, soy tu asistente de gestión laboral. ¿En qué puedo ayudarte?' }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   const handleSend = async () => {
     const text = input.trim()
     if (!text || loading) return
 
-    const userMsg = { role: 'user', content: text }
-    setMessages((prev) => [...prev, userMsg])
+    setMessages((prev) => [...prev, { role: 'user', text }])
     setInput('')
     setLoading(true)
 
     try {
-      const res = await post('/api/chat', { message: text })
-      if (res.success && res.data) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: res.data.reply || 'Sin respuesta' },
-        ])
+      const res = await apiClient.post('/api/chat', { message: text })
+
+      if (res.success && res.data?.reply) {
+        setMessages((prev) => [...prev, { role: 'bot', text: res.data.reply }])
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: 'Error al obtener respuesta. Intenta nuevamente.' },
-        ])
+        const errorMsg = res.error || 'No pude procesar tu consulta. Intenta de nuevo.'
+        setMessages((prev) => [...prev, { role: 'bot', text: errorMsg }])
       }
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: err.message || 'Error de conexión. Intenta nuevamente.' },
-      ])
+    } catch {
+      setMessages((prev) => [...prev, {
+        role: 'bot',
+        text: 'Error de conexión. Verifica tu conexión a internet e intenta de nuevo.'
+      }])
     } finally {
       setLoading(false)
     }
@@ -58,63 +51,42 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Chat button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-[#2563EB] hover:bg-[#1E40AF] text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-          title="Chat IA"
-        >
-          <MessageSquare className="w-6 h-6" />
-        </button>
-      )}
-
-      {/* Chat panel */}
-      {isOpen && (
-        <div className="fixed bottom-6 right-6 z-40 w-96 h-[500px] bg-white rounded-xl shadow-2xl border border-[#E5E7EB] flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#2563EB] text-white">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              <span className="font-medium text-sm">Asistente Laboral IA</span>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg hover:bg-white/20 transition-colors"
-            >
+      {/* Chat Panel */}
+      {open && (
+        <div className="fixed bottom-20 right-4 w-80 bg-white rounded-lg border border-[#E5E7EB] shadow-xl z-50 flex flex-col" style={{ height: '420px' }}>
+          <div className="bg-[#2563EB] text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+            <span className="font-medium text-sm">Asistente IA</span>
+            <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                    msg.role === 'user'
-                      ? 'bg-[#2563EB] text-white'
-                      : 'bg-gray-100 text-[#111827]'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                  msg.role === 'user'
+                    ? 'bg-[#2563EB] text-white'
+                    : 'bg-gray-100 text-[#111827]'
+                }`}>
+                  {msg.text}
                 </div>
               </div>
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-lg px-3 py-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#6B7280]" />
+                <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm text-[#6B7280]">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-[#6B7280] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-[#6B7280] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-[#6B7280] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="border-t border-[#E5E7EB] p-3">
             <div className="flex items-center gap-2">
               <input
@@ -123,13 +95,13 @@ export default function ChatWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Escribe tu consulta..."
-                className="flex-1 rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                 disabled={loading}
+                className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] disabled:opacity-50"
               />
               <button
                 onClick={handleSend}
-                disabled={loading || !input.trim()}
-                className="p-2 bg-[#2563EB] hover:bg-[#1E40AF] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={!input.trim() || loading}
+                className="bg-[#2563EB] text-white p-2 rounded-lg hover:bg-[#1E40AF] disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -137,6 +109,14 @@ export default function ChatWidget() {
           </div>
         </div>
       )}
+
+      {/* Floating Button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="fixed bottom-4 right-4 w-14 h-14 bg-[#2563EB] text-white rounded-full shadow-lg hover:bg-[#1E40AF] transition-colors flex items-center justify-center z-50 cursor-pointer"
+      >
+        {open ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+      </button>
     </>
   )
 }

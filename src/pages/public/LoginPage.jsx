@@ -1,106 +1,102 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Mail, Lock } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import Alert from '../../components/ui/Alert'
+import { apiClient } from '../../api/client'
+
+const ROLE_REDIRECTS = {
+  SUPER_ADMIN: '/admin',
+  SUPERVISOR: '/supervisor',
+  OWNER: '/empresa',
+  ADMIN: '/empresa',
+  WORKER: '/portal'
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login, isAuthenticated, role } = useAuth()
+  const auth = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
-
-  // If already authenticated, redirect
-  if (isAuthenticated && role) {
-    const redirectMap = {
-      SUPER_ADMIN: '/admin',
-      SUPERVISOR: '/supervisor',
-      OWNER: '/empresa',
-      ADMIN: '/empresa',
-      WORKER: '/portal',
-    }
-    navigate(redirectMap[role] || '/', { replace: true })
-    return null
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    setError(null)
     setLoading(true)
+
     try {
-      const res = await login(email, password)
-      if (!res.success) {
-        setError(res.error || 'Credenciales incorrectas')
-        return
+      const res = await apiClient.post('/api/auth/login', { email, password })
+
+      if (res.success) {
+        auth.login(res.data)
+        const role = res.data.user?.role || res.data.user?.rol
+        const redirect = ROLE_REDIRECTS[role] || '/empresa'
+        navigate(redirect, { replace: true })
+      } else {
+        setError(res.error || 'Credenciales inválidas')
       }
-      const userRole = res.data.user.role
-      const redirectMap = {
-        SUPER_ADMIN: '/admin',
-        SUPERVISOR: '/supervisor',
-        OWNER: '/empresa',
-        ADMIN: '/empresa',
-        WORKER: '/portal',
-      }
-      navigate(redirectMap[userRole] || '/', { replace: true })
     } catch {
-      setError('Error de conexion. Intenta nuevamente.')
+      setError('Error de conexión')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg border border-[#E5E7EB] w-full max-w-sm p-8">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Building2 className="w-8 h-8 text-[#2563EB]" />
-            <span className="text-2xl font-bold text-[#111827]">PymeLaboral</span>
-          </div>
-          <p className="text-sm text-[#6B7280]">Ingresa a tu cuenta</p>
+          <h1 className="text-2xl font-bold text-[#2563EB]">PymeLaboral</h1>
+          <p className="text-sm text-[#6B7280] mt-1">Ingresa a tu cuenta</p>
         </div>
 
-        <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert type="error" message={error} onClose={() => setError('')} />
-            )}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-[#DC2626] rounded-lg p-3 mb-4 text-sm">
+            {error}
+          </div>
+        )}
 
-            <Input
-              label="Email"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#111827] mb-1">Email</label>
+            <input
               type="email"
-              name="email"
-              icon={Mail}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@empresa.cl"
               required
+              autoComplete="email"
+              className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              placeholder="tu@email.com"
             />
-
-            <Input
-              label="Contrasena"
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#111827] mb-1">Contraseña</label>
+            <input
               type="password"
-              name="password"
-              icon={Lock}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Tu contrasena"
               required
+              autoComplete="current-password"
+              className="w-full border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              placeholder="Tu contraseña"
             />
-
-            <Button
-              type="submit"
-              loading={loading}
-              className="w-full"
-            >
-              Iniciar sesion
-            </Button>
-          </form>
-        </div>
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#2563EB] text-white py-2.5 rounded-lg hover:bg-[#1E40AF] transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <LogIn className="w-4 h-4" />
+                Iniciar Sesión
+              </>
+            )}
+          </button>
+        </form>
       </div>
     </div>
   )
