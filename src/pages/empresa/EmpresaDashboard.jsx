@@ -41,28 +41,24 @@ export default function EmpresaDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Trabajadores Activos"
+          label="Trabajadores Activos"
           value={stats?.trabajadoresActivos ?? 0}
           icon={Users}
-          color="blue"
         />
         <StatCard
-          title="Contratos Vigentes"
+          label="Contratos Vigentes"
           value={stats?.contratosVigentes ?? 0}
           icon={FileText}
-          color="green"
         />
         <StatCard
-          title="Cotizaciones Pendientes"
+          label="Cotizaciones Pendientes"
           value={stats?.cotizacionesPendientes ?? 0}
           icon={DollarSign}
-          color="yellow"
         />
         <StatCard
-          title="Total Sueldos"
+          label="Total Sueldos"
           value={formatCLP(stats?.totalSueldos ?? 0)}
           icon={Briefcase}
-          color="purple"
         />
       </div>
     </div>

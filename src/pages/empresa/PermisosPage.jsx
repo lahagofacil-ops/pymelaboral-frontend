@@ -97,9 +97,7 @@ export default function PermisosPage() {
     }
   }
 
-  const tipoOptions = Array.isArray(TIPO_PERMISO)
-    ? TIPO_PERMISO.map((t) => ({ value: t, label: t }))
-    : Object.entries(TIPO_PERMISO).map(([value, label]) => ({ value, label }))
+  const tipoOptions = TIPO_PERMISO
 
   const columns = [
     {

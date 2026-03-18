@@ -28,15 +28,16 @@ const config = {
   }
 }
 
-export default function Alert({ type = 'info', message, onClose }) {
-  const { border, bg, text, Icon } = config[type]
+export default function Alert({ type = 'info', message, children, onClose }) {
+  const { border, bg, text, Icon } = config[type] || config.info
 
-  if (!message) return null
+  const content = message || children
+  if (!content) return null
 
   return (
     <div className={classNames('border-l-4 rounded-r-lg p-4 flex items-start gap-3', border, bg)}>
       <Icon className={classNames('h-5 w-5 flex-shrink-0 mt-0.5', text)} />
-      <p className={classNames('text-sm flex-1', text)}>{message}</p>
+      <p className={classNames('text-sm flex-1', text)}>{content}</p>
       {onClose && (
         <button onClick={onClose} className={classNames('flex-shrink-0', text)}>
           <X className="h-4 w-4" />

@@ -18,13 +18,13 @@ export const REGIONES = [
 ]
 
 export const AFPS = [
-  { value: 'CAPITAL', label: 'AFP Capital' },
-  { value: 'CUPRUM', label: 'AFP Cuprum' },
-  { value: 'HABITAT', label: 'AFP Habitat' },
-  { value: 'MODELO', label: 'AFP Modelo' },
-  { value: 'PLANVITAL', label: 'AFP PlanVital' },
-  { value: 'PROVIDA', label: 'AFP ProVida' },
-  { value: 'UNO', label: 'AFP Uno' }
+  { value: 'Capital', label: 'AFP Capital' },
+  { value: 'Cuprum', label: 'AFP Cuprum' },
+  { value: 'Habitat', label: 'AFP Habitat' },
+  { value: 'Modelo', label: 'AFP Modelo' },
+  { value: 'PlanVital', label: 'AFP PlanVital' },
+  { value: 'Provida', label: 'AFP ProVida' },
+  { value: 'Uno', label: 'AFP Uno' }
 ]
 
 export const PLANES = [

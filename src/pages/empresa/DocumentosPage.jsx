@@ -82,9 +82,7 @@ export default function DocumentosPage() {
     }
   }
 
-  const tipoOptions = Array.isArray(TIPO_DOCUMENTO)
-    ? TIPO_DOCUMENTO.map((t) => ({ value: t, label: t }))
-    : Object.entries(TIPO_DOCUMENTO).map(([value, label]) => ({ value, label }))
+  const tipoOptions = TIPO_DOCUMENTO
 
   const columns = [
     {

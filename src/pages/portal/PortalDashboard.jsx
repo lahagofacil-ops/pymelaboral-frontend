@@ -76,22 +76,19 @@ export default function PortalDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard
-          title="Último Líquido"
+          label="Último Líquido"
           value={data?.ultimaLiquidacion ? formatCLP(data.ultimaLiquidacion.liquido) : '$0'}
           icon={DollarSign}
-          color="blue"
         />
         <StatCard
-          title="Vacaciones Tomadas"
+          label="Vacaciones Tomadas"
           value={`${data?.vacacionesTomadas ?? 0} días`}
           icon={Calendar}
-          color="green"
         />
         <StatCard
-          title="Solicitudes Pendientes"
+          label="Solicitudes Pendientes"
           value={(data?.solicitudesPendientes?.vacaciones ?? 0) + (data?.solicitudesPendientes?.permisos ?? 0)}
           icon={FileText}
-          color="yellow"
         />
       </div>
 

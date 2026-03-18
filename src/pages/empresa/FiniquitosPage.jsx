@@ -81,9 +81,7 @@ export default function FiniquitosPage() {
     }
   }
 
-  const causalOptions = Array.isArray(CAUSAL_TERMINO)
-    ? CAUSAL_TERMINO.map((c) => ({ value: c, label: c }))
-    : Object.entries(CAUSAL_TERMINO).map(([value, label]) => ({ value, label }))
+  const causalOptions = CAUSAL_TERMINO
 
   const columns = [
     {

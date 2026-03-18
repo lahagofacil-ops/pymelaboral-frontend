@@ -157,7 +157,7 @@ export default function TrabajadoresPage() {
           <Input label="Fecha de Nacimiento" name="fechaNacimiento" type="date" value={form.fechaNacimiento} onChange={handleChange} />
           <Select label="Sexo" name="sexo" value={form.sexo} onChange={handleChange} options={[{ value: 'M', label: 'Masculino' }, { value: 'F', label: 'Femenino' }]} />
           <Input label="Nacionalidad" name="nacionalidad" value={form.nacionalidad} onChange={handleChange} />
-          <Select label="AFP" name="afp" value={form.afp} onChange={handleChange} options={AFPS.map((a) => ({ value: a, label: a }))} />
+          <Select label="AFP" name="afp" value={form.afp} onChange={handleChange} options={AFPS} />
           <Input label="Salud (Isapre/Fonasa)" name="salud" value={form.salud} onChange={handleChange} />
           <Input label="Fecha de Ingreso" name="fechaIngreso" type="date" value={form.fechaIngreso} onChange={handleChange} required />
           <Select label="Estado" name="estado" value={form.estado} onChange={handleChange} options={[{ value: 'ACTIVO', label: 'Activo' }, { value: 'INACTIVO', label: 'Inactivo' }, { value: 'DESVINCULADO', label: 'Desvinculado' }]} />
