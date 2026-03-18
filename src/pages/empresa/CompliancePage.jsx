@@ -20,7 +20,7 @@ export default function CompliancePage() {
     try {
       setLoading(true)
       setError(null)
-      const result = await apiClient.get('/api/compliance')
+      const result = await apiClient.get('/api/compliance/score')
       if (result.success) {
         setResumen(result.data.resumen || null)
         setChecks(Array.isArray(result.data.checks) ? result.data.checks : [])

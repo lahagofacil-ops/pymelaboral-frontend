@@ -51,7 +51,7 @@ export default function LiquidacionesPage() {
     try {
       setGenerating(true)
       setError(null)
-      const result = await apiClient.post('/api/liquidaciones/generar', { periodo })
+      const result = await apiClient.post('/api/liquidaciones/masiva', { periodo })
       if (result.success) {
         fetchLiquidaciones()
       } else {

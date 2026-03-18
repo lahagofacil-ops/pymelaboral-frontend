@@ -79,7 +79,7 @@ export default function CotizacionesPage() {
 
   const handleMarcarPagada = async (id) => {
     try {
-      const result = await apiClient.put(`/api/cotizaciones/${id}/marcar-pagada`)
+      const result = await apiClient.put(`/api/cotizaciones/${id}/pagar`)
       if (result.success) {
         fetchCotizaciones()
         fetchResumen()

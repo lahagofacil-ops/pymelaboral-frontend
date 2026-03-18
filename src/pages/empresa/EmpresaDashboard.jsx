@@ -19,7 +19,7 @@ export default function EmpresaDashboard() {
     try {
       setLoading(true)
       setError(null)
-      const result = await apiClient.get('/api/dashboard')
+      const result = await apiClient.get('/api/dashboard/empresa')
       if (result.success) {
         setStats(result.data.stats)
       } else {

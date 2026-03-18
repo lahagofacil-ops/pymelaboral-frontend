@@ -39,8 +39,8 @@ export default function ConfiguracionPage() {
       setLoading(true)
       setError(null)
       const [empRes, usrRes] = await Promise.all([
-        apiClient.get('/api/empresa'),
-        apiClient.get('/api/empresa/usuarios'),
+        apiClient.get('/api/configuracion/empresa'),
+        apiClient.get('/api/configuracion/usuarios'),
       ])
       if (empRes.success) {
         setEmpresa(empRes.data)
@@ -67,7 +67,7 @@ export default function ConfiguracionPage() {
       setSaving(true)
       setError(null)
       setSuccess(null)
-      const result = await apiClient.put('/api/empresa', empresa)
+      const result = await apiClient.put('/api/configuracion/empresa', empresa)
       if (result.success) {
         setSuccess('Datos de empresa actualizados correctamente')
       } else {
@@ -89,7 +89,7 @@ export default function ConfiguracionPage() {
     try {
       setSavingUser(true)
       setError(null)
-      const result = await apiClient.post('/api/empresa/usuarios', userForm)
+      const result = await apiClient.post('/api/configuracion/usuarios', userForm)
       if (result.success) {
         setShowUserModal(false)
         setUserForm(initialUserForm)

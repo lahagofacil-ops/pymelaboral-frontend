@@ -24,7 +24,7 @@ export default function PortalDashboard() {
     try {
       setLoading(true)
       setError(null)
-      const result = await apiClient.get('/api/dashboard/worker')
+      const result = await apiClient.get('/api/dashboard/empresa')
       if (result.success) {
         setData(result.data)
       } else {

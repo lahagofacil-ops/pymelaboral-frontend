@@ -24,10 +24,10 @@ export default function ChatWidget() {
     setLoading(true)
 
     try {
-      const res = await apiClient.post('/api/chat', { message: text })
+      const res = await apiClient.post('/api/chat/mensaje', { mensaje: text })
 
-      if (res.success && res.data?.reply) {
-        setMessages((prev) => [...prev, { role: 'bot', text: res.data.reply }])
+      if (res.success && res.data?.respuesta) {
+        setMessages((prev) => [...prev, { role: 'bot', text: res.data.respuesta }])
       } else {
         const errorMsg = res.error || 'No pude procesar tu consulta. Intenta de nuevo.'
         setMessages((prev) => [...prev, { role: 'bot', text: errorMsg }])

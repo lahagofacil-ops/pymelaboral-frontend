@@ -22,9 +22,9 @@ export default function SupervisorDashboard() {
   useEffect(() => {
     const fetchEmpresas = async () => {
       try {
-        const res = await apiClient.get('/api/admin/empresas')
+        const res = await apiClient.get('/api/supervisora/empresas')
         if (res.success) {
-          setEmpresas(res.data)
+          setEmpresas(Array.isArray(res.data) ? res.data : [])
         } else {
           setError(res.error || 'Error al cargar empresas')
         }
