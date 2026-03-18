@@ -47,7 +47,8 @@ export default function DocumentosPage() {
         setError(docRes.error || 'Error al cargar documentos')
       }
       if (trabRes.success) {
-        setTrabajadores(Array.isArray(trabRes.data) ? trabRes.data : [])
+        const list = trabRes.data?.trabajadores || trabRes.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       setError('Error de conexión')

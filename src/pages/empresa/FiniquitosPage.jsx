@@ -48,7 +48,8 @@ export default function FiniquitosPage() {
         setError(finRes.error || 'Error al cargar finiquitos')
       }
       if (trabRes.success) {
-        setTrabajadores(Array.isArray(trabRes.data) ? trabRes.data : [])
+        const list = trabRes.data?.trabajadores || trabRes.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       setError('Error de conexión')
@@ -83,19 +84,19 @@ export default function FiniquitosPage() {
 
   const causalOptions = CAUSAL_TERMINO
 
+  const causalLabel = (causal) => {
+    const found = CAUSAL_TERMINO.find(c => c.value === causal)
+    return found ? found.label : causal
+  }
+
   const columns = [
     {
       header: 'Trabajador',
-      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
+      accessor: (row) => row.trabajadorNombre || (row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—'),
     },
     {
       header: 'Causal',
-      accessor: (row) => {
-        if (typeof CAUSAL_TERMINO === 'object' && !Array.isArray(CAUSAL_TERMINO)) {
-          return CAUSAL_TERMINO[row.causal] || row.causal
-        }
-        return row.causal
-      },
+      accessor: (row) => causalLabel(row.causal),
     },
     {
       header: 'Fecha Término',
@@ -108,7 +109,7 @@ export default function FiniquitosPage() {
     {
       header: 'Estado',
       accessor: (row) => (
-        <Badge variant={row.estado === 'PAGADO' ? 'success' : row.estado === 'GENERADO' ? 'warning' : 'default'}>
+        <Badge variant={row.estado === 'FIRMADO' || row.estado === 'RATIFICADO' ? 'success' : row.estado === 'CALCULADO' ? 'warning' : 'default'}>
           {row.estado}
         </Badge>
       ),
@@ -177,12 +178,16 @@ export default function FiniquitosPage() {
               <div>
                 <p className="text-sm text-[#6B7280]">Trabajador</p>
                 <p className="font-medium text-[#111827]">
-                  {showDetail.trabajador?.nombre} {showDetail.trabajador?.apellidoPaterno}
+                  {showDetail.trabajadorNombre || (showDetail.trabajador ? `${showDetail.trabajador.nombre} ${showDetail.trabajador.apellidoPaterno}` : '—')}
                 </p>
               </div>
               <div>
+                <p className="text-sm text-[#6B7280]">RUT</p>
+                <p className="font-medium text-[#111827]">{showDetail.trabajadorRut || '—'}</p>
+              </div>
+              <div>
                 <p className="text-sm text-[#6B7280]">Causal</p>
-                <p className="font-medium text-[#111827]">{showDetail.causal}</p>
+                <p className="font-medium text-[#111827]">{causalLabel(showDetail.causal)}</p>
               </div>
               <div>
                 <p className="text-sm text-[#6B7280]">Fecha Término</p>
@@ -190,26 +195,44 @@ export default function FiniquitosPage() {
               </div>
               <div>
                 <p className="text-sm text-[#6B7280]">Estado</p>
-                <Badge variant={showDetail.estado === 'PAGADO' ? 'success' : 'warning'}>
+                <Badge variant={showDetail.estado === 'FIRMADO' || showDetail.estado === 'RATIFICADO' ? 'success' : 'warning'}>
                   {showDetail.estado}
                 </Badge>
               </div>
             </div>
-            {showDetail.desglose && (
-              <div className="border-t border-[#E5E7EB] pt-4">
-                <h3 className="font-semibold text-[#111827] mb-2">Desglose</h3>
-                <div className="space-y-2">
-                  {Object.entries(showDetail.desglose).map(([key, value]) => (
-                    <div key={key} className="flex justify-between text-sm">
-                      <span className="text-[#6B7280]">{key}</span>
-                      <span className="text-[#111827]">{formatCLP(value)}</span>
-                    </div>
-                  ))}
+            <div className="border-t border-[#E5E7EB] pt-4">
+              <h3 className="font-semibold text-[#111827] mb-3">Desglose de Montos</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Indemnización por años de servicio</span>
+                  <span className="text-[#111827]">{formatCLP(showDetail.indemnizacionAnos)}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Indemnización sustitutiva aviso previo</span>
+                  <span className="text-[#111827]">{formatCLP(showDetail.indemnizacionAviso)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Vacaciones proporcionales</span>
+                  <span className="text-[#111827]">{formatCLP(showDetail.vacacionesProp)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Remuneraciones pendientes</span>
+                  <span className="text-[#111827]">{formatCLP(showDetail.remuneracionesPend)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Gratificación proporcional</span>
+                  <span className="text-[#111827]">{formatCLP(showDetail.gratificacionProp)}</span>
+                </div>
+                {showDetail.otrosMontos > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B7280]">Otros montos</span>
+                    <span className="text-[#111827]">{formatCLP(showDetail.otrosMontos)}</span>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
             <div className="border-t border-[#E5E7EB] pt-4 flex justify-between">
-              <span className="font-semibold text-[#111827]">Total</span>
+              <span className="font-semibold text-[#111827]">Total a Pagar</span>
               <span className="font-bold text-lg text-[#111827]">{formatCLP(showDetail.total)}</span>
             </div>
           </div>

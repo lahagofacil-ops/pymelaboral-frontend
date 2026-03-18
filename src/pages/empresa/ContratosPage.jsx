@@ -15,10 +15,14 @@ const initialForm = {
   trabajadorId: '',
   tipo: 'INDEFINIDO',
   cargo: '',
+  funciones: '',
+  lugarTrabajo: '',
   sueldoBase: '',
-  horasSemanales: '45',
+  horasSemanales: '42',
+  distribucionDias: '5',
   fechaInicio: '',
   fechaTermino: '',
+  estado: 'VIGENTE',
 }
 
 export default function ContratosPage() {
@@ -29,6 +33,7 @@ export default function ContratosPage() {
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
+  const [showDetail, setShowDetail] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -43,12 +48,14 @@ export default function ContratosPage() {
         apiClient.get('/api/trabajadores'),
       ])
       if (contratosRes.success) {
-        setContratos(Array.isArray(contratosRes.data) ? contratosRes.data : [])
+        const list = contratosRes.data?.contratos || contratosRes.data
+        setContratos(Array.isArray(list) ? list : [])
       } else {
         setError(contratosRes.error || 'Error al cargar contratos')
       }
       if (trabajadoresRes.success) {
-        setTrabajadores(Array.isArray(trabajadoresRes.data) ? trabajadoresRes.data : [])
+        const list = trabajadoresRes.data?.trabajadores || trabajadoresRes.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       setError('Error de conexión')
@@ -70,7 +77,12 @@ export default function ContratosPage() {
     e.preventDefault()
     try {
       setSaving(true)
-      const payload = { ...form, sueldoBase: Number(form.sueldoBase), horasSemanales: Number(form.horasSemanales) }
+      const payload = {
+        ...form,
+        sueldoBase: Number(form.sueldoBase),
+        horasSemanales: Number(form.horasSemanales),
+        distribucionDias: Number(form.distribucionDias),
+      }
       const result = await apiClient.post('/api/contratos', payload)
       if (result.success) {
         setShowModal(false)
@@ -88,7 +100,7 @@ export default function ContratosPage() {
   const columns = [
     {
       header: 'Trabajador',
-      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
+      accessor: (row) => row.trabajadorNombre || (row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—'),
     },
     { header: 'Tipo', accessor: 'tipo' },
     { header: 'Cargo', accessor: 'cargo' },
@@ -108,7 +120,7 @@ export default function ContratosPage() {
     {
       header: 'Acciones',
       accessor: (row) => (
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" onClick={() => setShowDetail(row)}>
           <Eye className="w-4 h-4" />
         </Button>
       ),
@@ -149,12 +161,16 @@ export default function ContratosPage() {
             options={[
               { value: 'INDEFINIDO', label: 'Indefinido' },
               { value: 'PLAZO_FIJO', label: 'Plazo Fijo' },
-              { value: 'POR_OBRA', label: 'Por Obra o Faena' },
+              { value: 'OBRA_FAENA', label: 'Por Obra o Faena' },
+              { value: 'PART_TIME', label: 'Jornada Parcial' },
             ]}
           />
           <Input label="Cargo" name="cargo" value={form.cargo} onChange={handleChange} required />
+          <Input label="Funciones" name="funciones" value={form.funciones} onChange={handleChange} required placeholder="Descripción de las funciones del cargo" />
+          <Input label="Lugar de Trabajo" name="lugarTrabajo" value={form.lugarTrabajo} onChange={handleChange} required />
           <Input label="Sueldo Base" name="sueldoBase" type="number" value={form.sueldoBase} onChange={handleChange} required />
           <Input label="Horas Semanales" name="horasSemanales" type="number" value={form.horasSemanales} onChange={handleChange} />
+          <Input label="Días por Semana" name="distribucionDias" type="number" value={form.distribucionDias} onChange={handleChange} />
           <Input label="Fecha Inicio" name="fechaInicio" type="date" value={form.fechaInicio} onChange={handleChange} required />
           <Input label="Fecha Término" name="fechaTermino" type="date" value={form.fechaTermino} onChange={handleChange} />
           <div className="flex justify-end gap-3 pt-4">
@@ -162,6 +178,53 @@ export default function ContratosPage() {
             <Button type="submit" loading={saving}>Crear Contrato</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={!!showDetail} onClose={() => setShowDetail(null)} title="Detalle de Contrato">
+        {showDetail && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-[#6B7280]">Trabajador</p>
+                <p className="font-medium text-[#111827]">{showDetail.trabajadorNombre || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">RUT</p>
+                <p className="font-medium text-[#111827]">{showDetail.trabajadorRut || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Tipo</p>
+                <p className="font-medium text-[#111827]">{showDetail.tipo}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Cargo</p>
+                <p className="font-medium text-[#111827]">{showDetail.cargo}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Sueldo Base</p>
+                <p className="font-medium text-[#111827]">{formatCLP(showDetail.sueldoBase)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Jornada</p>
+                <p className="font-medium text-[#111827]">{showDetail.horasSemanales} hrs/semana</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Fecha Inicio</p>
+                <p className="font-medium text-[#111827]">{showDetail.fechaInicio ? new Date(showDetail.fechaInicio).toLocaleDateString('es-CL') : '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Fecha Término</p>
+                <p className="font-medium text-[#111827]">{showDetail.fechaTermino ? new Date(showDetail.fechaTermino).toLocaleDateString('es-CL') : 'Indefinido'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B7280]">Estado</p>
+                <Badge variant={showDetail.estado === 'VIGENTE' ? 'success' : 'default'}>
+                  {showDetail.estado}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

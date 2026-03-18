@@ -48,7 +48,8 @@ export default function ConfiguracionPage() {
         setError(empRes.error || 'Error al cargar datos de empresa')
       }
       if (usrRes.success) {
-        setUsuarios(Array.isArray(usrRes.data) ? usrRes.data : [])
+        const list = usrRes.data?.usuarios || usrRes.data
+        setUsuarios(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       setError('Error de conexión')

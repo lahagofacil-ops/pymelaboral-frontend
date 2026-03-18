@@ -46,7 +46,8 @@ export default function VacacionesPage() {
         setError(vacRes.error || 'Error al cargar vacaciones')
       }
       if (trabRes.success) {
-        setTrabajadores(Array.isArray(trabRes.data) ? trabRes.data : [])
+        const list = trabRes.data?.trabajadores || trabRes.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       setError('Error de conexión')

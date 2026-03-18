@@ -35,7 +35,8 @@ export default function AsistenciaPage() {
     try {
       const result = await apiClient.get('/api/trabajadores')
       if (result.success) {
-        setTrabajadores(Array.isArray(result.data) ? result.data : [])
+        const list = result.data?.trabajadores || result.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       // silent

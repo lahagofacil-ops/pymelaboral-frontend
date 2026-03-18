@@ -48,7 +48,8 @@ export default function PermisosPage() {
         setError(permRes.error || 'Error al cargar permisos')
       }
       if (trabRes.success) {
-        setTrabajadores(Array.isArray(trabRes.data) ? trabRes.data : [])
+        const list = trabRes.data?.trabajadores || trabRes.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       setError('Error de conexión')

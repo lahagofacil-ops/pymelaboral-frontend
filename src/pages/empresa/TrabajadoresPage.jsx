@@ -44,7 +44,8 @@ export default function TrabajadoresPage() {
       setError(null)
       const result = await apiClient.get('/api/trabajadores')
       if (result.success) {
-        setTrabajadores(Array.isArray(result.data) ? result.data : [])
+        const list = result.data?.trabajadores || result.data
+        setTrabajadores(Array.isArray(list) ? list : [])
       } else {
         setError(result.error || 'Error al cargar trabajadores')
       }
@@ -104,14 +105,17 @@ export default function TrabajadoresPage() {
   }
 
   const columns = [
-    { header: 'RUT', accessor: 'rut' },
+    {
+      header: 'RUT',
+      accessor: (row) => row.rutFormateado || row.rut,
+    },
     {
       header: 'Nombre',
       accessor: (row) => `${row.nombre} ${row.apellidoPaterno}`,
     },
     {
       header: 'Cargo',
-      accessor: (row) => row.contratos?.[0]?.cargo || '—',
+      accessor: (row) => row.contratoActivo?.cargo || '—',
     },
     { header: 'AFP', accessor: 'afp' },
     {

@@ -18,13 +18,13 @@ export const REGIONES = [
 ]
 
 export const AFPS = [
-  { value: 'Capital', label: 'AFP Capital' },
-  { value: 'Cuprum', label: 'AFP Cuprum' },
-  { value: 'Habitat', label: 'AFP Habitat' },
-  { value: 'Modelo', label: 'AFP Modelo' },
-  { value: 'PlanVital', label: 'AFP PlanVital' },
-  { value: 'Provida', label: 'AFP ProVida' },
-  { value: 'Uno', label: 'AFP Uno' }
+  { value: 'CAPITAL', label: 'AFP Capital' },
+  { value: 'CUPRUM', label: 'AFP Cuprum' },
+  { value: 'HABITAT', label: 'AFP Habitat' },
+  { value: 'MODELO', label: 'AFP Modelo' },
+  { value: 'PLANVITAL', label: 'AFP PlanVital' },
+  { value: 'PROVIDA', label: 'AFP ProVida' },
+  { value: 'UNO', label: 'AFP Uno' }
 ]
 
 export const PLANES = [
@@ -34,36 +34,43 @@ export const PLANES = [
 ]
 
 export const CAUSAL_TERMINO = [
-  { value: 'ART159_N1', label: 'Art. 159 N°1 - Mutuo acuerdo de las partes' },
-  { value: 'ART159_N2', label: 'Art. 159 N°2 - Renuncia del trabajador' },
-  { value: 'ART159_N3', label: 'Art. 159 N°3 - Muerte del trabajador' },
-  { value: 'ART159_N4', label: 'Art. 159 N°4 - Vencimiento del plazo convenido' },
-  { value: 'ART159_N5', label: 'Art. 159 N°5 - Conclusión del trabajo o servicio' },
-  { value: 'ART159_N6', label: 'Art. 159 N°6 - Caso fortuito o fuerza mayor' },
-  { value: 'ART160_N1', label: 'Art. 160 N°1 - Conductas indebidas de carácter grave' },
-  { value: 'ART160_N2', label: 'Art. 160 N°2 - Negociaciones incompatibles' },
-  { value: 'ART160_N3', label: 'Art. 160 N°3 - No concurrencia sin causa justificada' },
-  { value: 'ART160_N4', label: 'Art. 160 N°4 - Abandono del trabajo' },
-  { value: 'ART160_N5', label: 'Art. 160 N°5 - Actos, omisiones o imprudencias temerarias' },
-  { value: 'ART160_N6', label: 'Art. 160 N°6 - Perjuicio material causado intencionalmente' },
-  { value: 'ART160_N7', label: 'Art. 160 N°7 - Incumplimiento grave de las obligaciones' },
-  { value: 'ART161', label: 'Art. 161 - Necesidades de la empresa' }
+  { value: 'MUTUO_ACUERDO', label: 'Art. 159 N°1 - Mutuo acuerdo de las partes' },
+  { value: 'RENUNCIA', label: 'Art. 159 N°2 - Renuncia del trabajador' },
+  { value: 'MUERTE', label: 'Art. 159 N°3 - Muerte del trabajador' },
+  { value: 'VENCIMIENTO_PLAZO', label: 'Art. 159 N°4 - Vencimiento del plazo convenido' },
+  { value: 'CONCLUSION_OBRA', label: 'Art. 159 N°5 - Conclusión del trabajo o servicio' },
+  { value: 'CASO_FORTUITO', label: 'Art. 159 N°6 - Caso fortuito o fuerza mayor' },
+  { value: 'CONDUCTA_INDEBIDA', label: 'Art. 160 N°1 - Conducta indebida de carácter grave' },
+  { value: 'INASISTENCIA', label: 'Art. 160 N°3 - Inasistencias injustificadas' },
+  { value: 'ABANDONO', label: 'Art. 160 N°4 - Abandono del trabajo' },
+  { value: 'INCUMPLIMIENTO_GRAVE', label: 'Art. 160 N°7 - Incumplimiento grave de obligaciones' },
+  { value: 'NECESIDADES_EMPRESA', label: 'Art. 161 - Necesidades de la empresa' },
+  { value: 'DESAHUCIO', label: 'Art. 161 inc.2 - Desahucio del empleador' }
 ]
 
 export const TIPO_PERMISO = [
-  { value: 'MEDICO', label: 'Médico' },
-  { value: 'ADMINISTRATIVO', label: 'Administrativo' },
-  { value: 'PERSONAL', label: 'Personal' },
+  { value: 'MATRIMONIO', label: 'Matrimonio (5 días)' },
+  { value: 'NACIMIENTO_HIJO', label: 'Nacimiento de hijo (5 días)' },
+  { value: 'FALLECIMIENTO', label: 'Fallecimiento familiar (3-7 días)' },
+  { value: 'MUDANZA', label: 'Mudanza (1 día)' },
+  { value: 'EXAMEN_PREVENTIVO', label: 'Examen preventivo de salud' },
   { value: 'OTRO', label: 'Otro' }
 ]
 
 export const TIPO_DOCUMENTO = [
   { value: 'CONTRATO', label: 'Contrato' },
-  { value: 'ANEXO', label: 'Anexo' },
+  { value: 'ANEXO_CONTRATO', label: 'Anexo de Contrato' },
   { value: 'LIQUIDACION', label: 'Liquidación' },
   { value: 'FINIQUITO', label: 'Finiquito' },
-  { value: 'PROTOCOLO_KARIN', label: 'Protocolo Karin' },
-  { value: 'REGLAMENTO_INTERNO', label: 'Reglamento Interno' },
+  { value: 'CERTIFICADO_AFP', label: 'Certificado AFP' },
+  { value: 'CERTIFICADO_SALUD', label: 'Certificado Salud' },
+  { value: 'CEDULA_IDENTIDAD', label: 'Cédula de Identidad' },
+  { value: 'CERTIFICADO_ANTECEDENTES', label: 'Certificado Antecedentes' },
+  { value: 'CAPACITACION', label: 'Capacitación' },
+  { value: 'ODI', label: 'Obligación de Informar (ODI)' },
+  { value: 'LICENCIA_MEDICA', label: 'Licencia Médica' },
+  { value: 'RIOHS', label: 'Reglamento Interno (RIOHS)' },
+  { value: 'PROTOCOLO_KARIN', label: 'Protocolo Ley Karin' },
   { value: 'OTRO', label: 'Otro' }
 ]
 
