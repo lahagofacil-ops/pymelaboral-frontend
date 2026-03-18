@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, Eye } from 'lucide-react'
+import { Plus, Eye, Download } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatCLP } from '../../lib/utils'
+import { downloadPDF } from '../../lib/pdfDownload'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -34,6 +35,18 @@ export default function ContratosPage() {
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
   const [showDetail, setShowDetail] = useState(null)
+  const [downloadingPdf, setDownloadingPdf] = useState(null)
+
+  const handleDownloadPDF = async (id) => {
+    try {
+      setDownloadingPdf(id)
+      await downloadPDF(`/api/contratos/${id}/pdf`, `contrato_${id}.pdf`)
+    } catch (err) {
+      setError('Error al descargar PDF')
+    } finally {
+      setDownloadingPdf(null)
+    }
+  }
 
   useEffect(() => {
     fetchData()
@@ -120,9 +133,17 @@ export default function ContratosPage() {
     {
       header: 'Acciones',
       accessor: (row) => (
-        <Button variant="ghost" size="sm" onClick={() => setShowDetail(row)}>
-          <Eye className="w-4 h-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setShowDetail(row)} title="Ver detalle">
+            <Eye className="w-4 h-4" />
+          </Button>
+          {(row.estado === 'VIGENTE' || row.estado === 'BORRADOR') && (
+            <Button variant="ghost" size="sm" onClick={() => handleDownloadPDF(row.id)}
+              loading={downloadingPdf === row.id} title="Descargar PDF">
+              <Download className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       ),
     },
   ]
@@ -222,6 +243,12 @@ export default function ContratosPage() {
                   {showDetail.estado}
                 </Badge>
               </div>
+            </div>
+            <div className="flex justify-end pt-4 border-t border-[#E5E7EB]">
+              <Button onClick={() => handleDownloadPDF(showDetail.id)} loading={downloadingPdf === showDetail.id}>
+                <Download className="w-4 h-4 mr-2" />
+                Descargar PDF
+              </Button>
             </div>
           </div>
         )}

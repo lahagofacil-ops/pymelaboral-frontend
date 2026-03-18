@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, Eye } from 'lucide-react'
+import { Plus, Eye, Download } from 'lucide-react'
 import { apiClient } from '../../api/client'
 import { formatCLP, formatDate } from '../../lib/utils'
+import { downloadPDF } from '../../lib/pdfDownload'
 import { CAUSAL_TERMINO } from '../../lib/constants'
 import Table from '../../components/ui/Table'
 import Button from '../../components/ui/Button'
@@ -28,6 +29,18 @@ export default function FiniquitosPage() {
   const [showDetail, setShowDetail] = useState(null)
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(null)
+
+  const handleDownloadPDF = async (id) => {
+    try {
+      setDownloadingPdf(id)
+      await downloadPDF(`/api/finiquitos/${id}/pdf`, `finiquito_${id}.pdf`)
+    } catch {
+      setError('Error al descargar PDF')
+    } finally {
+      setDownloadingPdf(null)
+    }
+  }
 
   useEffect(() => {
     fetchData()
@@ -117,9 +130,15 @@ export default function FiniquitosPage() {
     {
       header: 'Acciones',
       accessor: (row) => (
-        <Button variant="ghost" size="sm" onClick={() => setShowDetail(row)}>
-          <Eye className="w-4 h-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setShowDetail(row)} title="Ver detalle">
+            <Eye className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDownloadPDF(row.id)}
+            loading={downloadingPdf === row.id} title="Descargar PDF">
+            <Download className="w-4 h-4" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -231,9 +250,15 @@ export default function FiniquitosPage() {
                 )}
               </div>
             </div>
-            <div className="border-t border-[#E5E7EB] pt-4 flex justify-between">
-              <span className="font-semibold text-[#111827]">Total a Pagar</span>
-              <span className="font-bold text-lg text-[#111827]">{formatCLP(showDetail.total)}</span>
+            <div className="border-t border-[#E5E7EB] pt-4 flex justify-between items-center">
+              <div>
+                <span className="font-semibold text-[#111827]">Total a Pagar</span>
+                <span className="font-bold text-lg text-[#111827] ml-4">{formatCLP(showDetail.total)}</span>
+              </div>
+              <Button onClick={() => handleDownloadPDF(showDetail.id)} loading={downloadingPdf === showDetail.id} size="sm">
+                <Download className="w-4 h-4 mr-1" />
+                PDF
+              </Button>
             </div>
           </div>
         )}
