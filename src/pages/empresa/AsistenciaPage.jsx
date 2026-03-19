@@ -62,7 +62,10 @@ export default function AsistenciaPage() {
 
   const fetchResumen = async () => {
     try {
-      const result = await apiClient.get(`/api/asistencia/resumen?fecha=${fecha}`)
+      // Backend expects periodo=YYYY-MM, not full date
+      const periodo = fecha ? fecha.substring(0, 7) : ''
+      if (!periodo) return
+      const result = await apiClient.get(`/api/asistencia/resumen?periodo=${periodo}`)
       if (result.success) {
         setResumen(Array.isArray(result.data.resumen) ? result.data.resumen : [])
       }
@@ -105,9 +108,9 @@ export default function AsistenciaPage() {
   const columns = [
     {
       header: 'Trabajador',
-      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
+      accessor: (row) => row.trabajadorNombre || (row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—'),
     },
-    { header: 'Fecha', accessor: 'fecha' },
+    { header: 'Fecha', accessor: (row) => row.fecha ? new Date(row.fecha).toLocaleDateString('es-CL') : '—' },
     {
       header: 'Entrada',
       accessor: (row) => formatTime(row.entrada),
@@ -180,7 +183,7 @@ export default function AsistenciaPage() {
                 {resumen.map((item, i) => (
                   <tr key={i} className="border-b border-[#E5E7EB]">
                     <td className="py-2 text-[#111827]">
-                      {item.trabajador?.nombre} {item.trabajador?.apellidoPaterno}
+                      {item.trabajadorNombre || (item.trabajador ? `${item.trabajador.nombre} ${item.trabajador.apellidoPaterno}` : '—')}
                     </td>
                     <td className="py-2 text-right text-[#111827]">{item.diasTrabajados}</td>
                     <td className="py-2 text-right text-[#111827]">{item.horasOrdinarias}</td>

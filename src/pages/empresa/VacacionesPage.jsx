@@ -15,7 +15,6 @@ const initialForm = {
   trabajadorId: '',
   fechaDesde: '',
   fechaHasta: '',
-  diasHabiles: '',
   observacion: '',
 }
 
@@ -65,8 +64,7 @@ export default function VacacionesPage() {
     try {
       setSaving(true)
       setError(null)
-      const payload = { ...form, diasHabiles: Number(form.diasHabiles) }
-      const result = await apiClient.post('/api/vacaciones', payload)
+      const result = await apiClient.post('/api/vacaciones', form)
       if (result.success) {
         setShowModal(false)
         setForm(initialForm)
@@ -84,7 +82,11 @@ export default function VacacionesPage() {
   const handleUpdateEstado = async (id, estado) => {
     try {
       setError(null)
-      const result = await apiClient.put(`/api/vacaciones/${id}`, { estado })
+      // Backend uses /aprobar or /rechazar endpoints, not PUT with body
+      const endpoint = estado === 'APROBADA'
+        ? `/api/vacaciones/${id}/aprobar`
+        : `/api/vacaciones/${id}/rechazar`
+      const result = await apiClient.put(endpoint)
       if (result.success) {
         fetchData()
       } else {
@@ -98,7 +100,7 @@ export default function VacacionesPage() {
   const columns = [
     {
       header: 'Trabajador',
-      accessor: (row) => row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—',
+      accessor: (row) => row.trabajadorNombre || (row.trabajador ? `${row.trabajador.nombre} ${row.trabajador.apellidoPaterno}` : '—'),
     },
     {
       header: 'Desde',
@@ -161,8 +163,7 @@ export default function VacacionesPage() {
           />
           <Input label="Fecha Desde" name="fechaDesde" type="date" value={form.fechaDesde} onChange={handleChange} required />
           <Input label="Fecha Hasta" name="fechaHasta" type="date" value={form.fechaHasta} onChange={handleChange} required />
-          <Input label="Días Hábiles" name="diasHabiles" type="number" value={form.diasHabiles} onChange={handleChange} required />
-          <Input label="Observación" name="observacion" value={form.observacion} onChange={handleChange} />
+          <Input label="Observación" name="observacion" value={form.observacion} onChange={handleChange} placeholder="Opcional" />
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
             <Button type="submit" loading={saving}>Enviar Solicitud</Button>
