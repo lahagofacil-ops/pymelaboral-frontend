@@ -23,9 +23,16 @@ export default function SupervisorasPage() {
         apiClient.get('/api/admin/supervisoras'),
         apiClient.get('/api/admin/empresas')
       ])
-      if (supRes.success) setSupervisoras(supRes.data)
-      else setError(supRes.error || 'Error al cargar supervisoras')
-      if (empRes.success) setEmpresas(empRes.data)
+      if (supRes.success) {
+        const list = supRes.data?.supervisoras || supRes.data
+        setSupervisoras(Array.isArray(list) ? list : [])
+      } else {
+        setError(supRes.error || 'Error al cargar supervisoras')
+      }
+      if (empRes.success) {
+        const list = empRes.data?.empresas || empRes.data
+        setEmpresas(Array.isArray(list) ? list : [])
+      }
     } catch {
       setError('Error de conexión')
     } finally {

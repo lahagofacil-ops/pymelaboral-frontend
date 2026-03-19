@@ -34,7 +34,8 @@ export default function EmpresasPage() {
     try {
       const res = await apiClient.get('/api/admin/empresas')
       if (res.success) {
-        setEmpresas(res.data)
+        const list = res.data?.empresas || res.data
+        setEmpresas(Array.isArray(list) ? list : [])
       } else {
         setError(res.error || 'Error al cargar empresas')
       }
